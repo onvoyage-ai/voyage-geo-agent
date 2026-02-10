@@ -142,7 +142,7 @@ class AnalysisStage(PipelineStage):
             recommendations.append("Address negative narratives and strengthen positive brand signals")
 
         score = (mr * 30 + ms * 30 + (sent.overall + 1) / 2 * 20 + (1 / rank if rank > 0 else 0) * 20)
-        score = min(max(round(score * 100, 1), 0), 100)
+        score = min(max(round(score, 1), 0), 100)
 
         headline = f"{profile.name}: {'Strong' if score > 60 else 'Moderate' if score > 30 else 'Weak'} AI visibility ({score}/100)"
 
