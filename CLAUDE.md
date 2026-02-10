@@ -107,6 +107,18 @@ Competitor/brand names are extracted from AI response texts using an LLM call (`
 
 Flow: `AnalysisStage` receives `ProviderRegistry` from `VoyageGeoEngine`, uses the first available provider to call `extract_competitors_with_llm()` before running analyzers, then passes the extracted list to the `MindshareAnalyzer` and `CompetitorAnalyzer` via the `extracted_competitors` kwarg. Both analyzers fall back to `profile.competitors` if LLM extraction returns nothing.
 
+### Narrative analysis (analysis stage)
+
+The `NarrativeAnalyzer` answers "what are AI models saying about each brand, and what stories are they missing?" It uses a second LLM call (`extract_narratives_with_llm` in `src/voyage_geo/utils/text.py`) to extract structured claims from AI responses — each claim has a brand, attribute (e.g. pricing, security, features), sentiment, and summary.
+
+The analyzer then:
+1. Groups claims about the target brand by attribute → `brand_themes`
+2. Counts positive/negative/neutral claims
+3. Compares claims against `profile.unique_selling_points` to detect **coverage gaps** — USPs that AI models don't mention at all
+4. Builds a `competitor_themes` map showing which competitors own which narrative themes
+
+The HTML report renders three sections: "What AI Says About {brand}" (theme table + stacked bar chart), "USP Coverage Gaps" (covered/missing table with green/red indicators), and "Competitive Narrative Map" (brands × attributes matrix).
+
 ## Conventions
 
 - Python 3.11+, async/await throughout

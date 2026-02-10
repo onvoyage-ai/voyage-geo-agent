@@ -17,6 +17,7 @@ Read `analysis/summary.json` and `analysis/analysis.json` from the run directory
 - 2-3 key takeaways in plain language
 - Compare across providers ("Claude mentions you most, Gemini least")
 - Mention sentiment
+- Summarize narrative analysis: what themes AI models associate with the brand, and which USPs they're missing (from `analysis.narrative`)
 
 ## Step 3: Interactive Q&A
 
@@ -24,6 +25,9 @@ Ask "What would you like to dig into?" and offer:
 - "How do I compare to competitors?"
 - "Which AI model likes my brand the most?"
 - "What words do AI models use to describe me?"
+- "What narratives are AI models telling about my brand?"
+- "Which of my USPs are AI models missing?"
+- "What narratives do competitors own that I don't?"
 - "Show me raw responses mentioning my brand"
 - "What should I do to improve?"
 

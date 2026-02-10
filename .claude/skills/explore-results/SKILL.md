@@ -35,6 +35,7 @@ Present a conversational overview:
 - Give 2-3 key takeaways in plain language
 - Compare across providers ("Claude mentions you most, Gemini least")
 - Mention sentiment ("AI models describe you positively, especially around [attribute]")
+- Summarize narrative analysis: what themes AI models associate with the brand, and which USPs they're missing (from `analysis.narrative`)
 
 ## Step 3: Interactive Q&A
 
@@ -44,6 +45,9 @@ Offer suggestions:
 - "How do I compare to competitors?"
 - "Which AI model likes my brand the most?"
 - "What words do AI models use to describe me?"
+- "What narratives are AI models telling about my brand?" (uses `analysis.narrative.brand_themes`)
+- "Which of my USPs are AI models missing?" (uses `analysis.narrative.gaps`)
+- "What narratives do competitors own that I don't?" (uses `analysis.narrative.competitor_themes`)
 - "Show me the raw responses where my brand was mentioned"
 - "What should I do to improve my AI visibility?"
 

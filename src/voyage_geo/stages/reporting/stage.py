@@ -214,6 +214,8 @@ class ReportingStage(PipelineStage):
         {''.join(f"<tr><td>{'<strong>' + c.name + '</strong>' if c.name == a.brand else c.name}</td><td>{c.mention_rate*100:.1f}%</td><td>{c.mindshare*100:.1f}%</td><td class='{('positive' if c.sentiment > 0.05 else 'negative' if c.sentiment < -0.05 else 'neutral')}'>{c.sentiment:.3f}</td></tr>" for c in a.competitor_analysis.competitors)}
     </table>
 
+    {self._narrative_html(a)}
+
     {self._excerpts_html(a)}
 
     {self._query_results_html(ctx)}
@@ -224,6 +226,102 @@ class ReportingStage(PipelineStage):
 
         path = run_dir / "reports" / "report.html"
         path.write_text(html)
+
+    def _narrative_html(self, a) -> str:
+        n = a.narrative
+        if not n.claims:
+            return ""
+
+        parts = []
+
+        # Section 1: What AI Says About {brand}
+        if n.brand_themes:
+            parts.append(f"<h2>What AI Says About {html_mod.escape(a.brand)}</h2>")
+            parts.append("<table><tr><th>Theme</th><th>Sentiment</th><th>Sample Claims</th></tr>")
+            for attr, claims in n.brand_themes.items():
+                pos = sum(1 for c in claims if c.sentiment == "positive")
+                neg = sum(1 for c in claims if c.sentiment == "negative")
+                neu = sum(1 for c in claims if c.sentiment == "neutral")
+                sentiment_summary = []
+                if pos:
+                    sentiment_summary.append(f"<span class='positive'>{pos} positive</span>")
+                if neg:
+                    sentiment_summary.append(f"<span class='negative'>{neg} negative</span>")
+                if neu:
+                    sentiment_summary.append(f"<span class='neutral'>{neu} neutral</span>")
+                sample = "; ".join(html_mod.escape(c.claim) for c in claims[:3])
+                parts.append(
+                    f"<tr><td><strong>{html_mod.escape(attr)}</strong></td>"
+                    f"<td>{', '.join(sentiment_summary)}</td>"
+                    f"<td>{sample}</td></tr>"
+                )
+            parts.append("</table>")
+
+            # Plotly horizontal bar chart for brand themes
+            attrs = list(n.brand_themes.keys())
+            pos_counts = [sum(1 for c in n.brand_themes[a_] if c.sentiment == "positive") for a_ in attrs]
+            neg_counts = [sum(1 for c in n.brand_themes[a_] if c.sentiment == "negative") for a_ in attrs]
+            neu_counts = [sum(1 for c in n.brand_themes[a_] if c.sentiment == "neutral") for a_ in attrs]
+            parts.append("""
+    <div class="chart-container"><div id="narrative-themes-chart"></div></div>
+    <script>
+    Plotly.newPlot('narrative-themes-chart', [""")
+            parts.append(f"""{{
+        y: {attrs}, x: {pos_counts}, name: 'Positive', type: 'bar', orientation: 'h',
+        marker: {{ color: '#4ade80' }}
+    }}, {{
+        y: {attrs}, x: {neu_counts}, name: 'Neutral', type: 'bar', orientation: 'h',
+        marker: {{ color: '#94a3b8' }}
+    }}, {{
+        y: {attrs}, x: {neg_counts}, name: 'Negative', type: 'bar', orientation: 'h',
+        marker: {{ color: '#f87171' }}
+    }}], {{
+        barmode: 'stack',
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        font: {{ color: '#e2e8f0' }},
+        xaxis: {{ gridcolor: '#334155', title: 'Claims' }},
+        margin: {{t: 10, b: 40, l: 120, r: 10}},
+        height: {max(200, len(attrs) * 40 + 80)},
+        legend: {{ orientation: 'h', y: -0.2 }}
+    }}, {{responsive: true}});
+    </script>""")
+
+        # Section 2: USP Coverage Gaps
+        if n.gaps:
+            parts.append("<h2>USP Coverage Gaps</h2>")
+            parts.append(f'<p style="color:#94a3b8;">Coverage: <strong>{n.coverage_score*100:.0f}%</strong> of USPs mentioned by AI models</p>')
+            parts.append("<table><tr><th>USP</th><th>Status</th><th>Detail</th></tr>")
+            for gap in n.gaps:
+                status = "<span class='positive'>Covered</span>" if gap.covered else "<span class='negative'>Missing</span>"
+                parts.append(
+                    f"<tr><td>{html_mod.escape(gap.usp)}</td>"
+                    f"<td>{status}</td>"
+                    f"<td>{html_mod.escape(gap.detail)}</td></tr>"
+                )
+            parts.append("</table>")
+
+        # Section 3: Competitive Narrative Map
+        if n.competitor_themes:
+            # Collect all attributes across all competitors
+            all_attrs: set[str] = set()
+            for attrs_map in n.competitor_themes.values():
+                all_attrs.update(attrs_map.keys())
+            sorted_attrs = sorted(all_attrs)
+
+            parts.append("<h2>Competitive Narrative Map</h2>")
+            parts.append("<table><tr><th>Brand</th>")
+            for attr in sorted_attrs:
+                parts.append(f"<th>{html_mod.escape(attr)}</th>")
+            parts.append("</tr>")
+            for brand, attrs_map in sorted(n.competitor_themes.items()):
+                parts.append(f"<tr><td>{html_mod.escape(brand)}</td>")
+                for attr in sorted_attrs:
+                    count = attrs_map.get(attr, 0)
+                    parts.append(f"<td>{count if count else '—'}</td>")
+                parts.append("</tr>")
+            parts.append("</table>")
+
+        return "\n".join(parts)
 
     def _generate_charts(self, a) -> str:
         parts = []

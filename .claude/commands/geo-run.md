@@ -59,6 +59,8 @@ Read `data/runs/<run-id>/analysis/summary.json` and `analysis/analysis.json`. Pr
 - Overall AI visibility score
 - Mention rate across providers (table: provider | mention rate | sentiment)
 - Competitor rank (if applicable)
-- Top 2-3 recommendations
+- Narrative analysis: what themes AI models associate with the brand (`analysis.narrative.brand_themes`), and which USPs AI models are missing (`analysis.narrative.gaps` — highlight any with `covered: false`)
+- Coverage score: what percentage of USPs are being mentioned by AI models
+- Top 2-3 recommendations (including narrative gap recommendations)
 
 Tell them the report location. Ask "Want to dig deeper into any finding?"

@@ -70,9 +70,14 @@ After the run completes:
    - "Sentiment is [positive/neutral/negative]"
    - "You rank #N among competitors for AI mindshare"
    - "Strongest on [provider], weakest on [provider]"
-4. Highlight the top recommendations
-5. Tell them where the HTML report is: `data/runs/<run-id>/reports/report.html`
-6. Ask "Want to dig deeper into any of these findings?"
+4. Present narrative analysis findings:
+   - What themes/attributes AI models associate with the brand (from `analysis.narrative.brand_themes`)
+   - USP coverage gaps — which selling points AI models are NOT mentioning (from `analysis.narrative.gaps`)
+   - How the brand's narrative compares to competitors (from `analysis.narrative.competitor_themes`)
+   - E.g. "AI models talk about your security and features, but never mention your AI-powered expense management"
+5. Highlight the top recommendations (including narrative gap recommendations)
+6. Tell them where the HTML report is: `data/runs/<run-id>/reports/report.html`
+7. Ask "Want to dig deeper into any of these findings?"
 
 ## Allowed Tools
 

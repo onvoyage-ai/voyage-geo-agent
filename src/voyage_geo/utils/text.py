@@ -103,3 +103,72 @@ JSON array of brand names (no explanation, just the array):"""
     except Exception:
         logger.warning("llm_competitor_extraction_failed", target=target_brand)
     return []
+
+
+async def extract_narratives_with_llm(
+    responses: list[str],
+    target_brand: str,
+    category: str,
+    provider: BaseProvider,
+) -> list[dict]:
+    """Extract structured brand claims from AI responses using an LLM.
+
+    Returns a list of dicts with keys: brand, attribute, sentiment, claim.
+    """
+    combined = "\n---\n".join(responses)
+    combined = truncate(combined, 15000)
+
+    prompt = f"""Analyze the following AI responses about the "{category}" industry.
+For every brand or company mentioned, extract each specific claim being made about it.
+
+Return a JSON array of objects with these fields:
+- "brand": the company/brand name
+- "attribute": one of: pricing, features, security, ease-of-use, integration, support, scalability, performance, reliability, market-position
+- "sentiment": "positive", "negative", or "neutral"
+- "claim": a short summary of the specific claim (one sentence)
+
+RULES:
+- Extract ALL claims about ALL brands mentioned (including "{target_brand}")
+- Each claim should be a distinct, specific assertion (not a vague statement)
+- If a response says "X is known for great security", that's a positive security claim
+- If a response says "X can be expensive", that's a negative pricing claim
+- Return ONLY a valid JSON array, nothing else
+
+AI RESPONSES:
+{combined}
+
+JSON array of claims:"""
+
+    try:
+        resp = await provider.query(prompt)
+        text = resp.text.strip()
+        # Extract JSON array from response (handle markdown fences)
+        if "```" in text:
+            text = text.split("```")[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+        start = text.find("[")
+        end = text.rfind("]")
+        if start != -1 and end != -1:
+            text = text[start : end + 1]
+        claims = json.loads(text)
+        if isinstance(claims, list):
+            # Validate structure
+            valid_claims = []
+            for c in claims:
+                if (
+                    isinstance(c, dict)
+                    and "brand" in c
+                    and "attribute" in c
+                    and "sentiment" in c
+                    and "claim" in c
+                ):
+                    # Normalize sentiment
+                    if c["sentiment"] not in ("positive", "negative", "neutral"):
+                        c["sentiment"] = "neutral"
+                    valid_claims.append(c)
+            return valid_claims
+    except Exception as exc:
+        logger.warning("llm_narrative_extraction_failed", target=target_brand, error=str(exc))
+    return []

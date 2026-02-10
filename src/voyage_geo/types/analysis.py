@@ -80,6 +80,31 @@ class CompetitorAnalysis(BaseModel):
     brand_rank: int = 0
 
 
+class BrandClaim(BaseModel):
+    brand: str
+    attribute: str  # pricing, features, security, ease-of-use, integration, support, scalability
+    sentiment: Literal["positive", "negative", "neutral"]
+    claim: str
+
+
+class NarrativeGap(BaseModel):
+    usp: str
+    covered: bool
+    detail: str
+
+
+class NarrativeAnalysis(BaseModel):
+    claims: list[BrandClaim] = []
+    total_claims: int = 0
+    brand_themes: dict[str, list[BrandClaim]] = {}  # attribute → claims about target brand
+    brand_positive_count: int = 0
+    brand_negative_count: int = 0
+    brand_neutral_count: int = 0
+    gaps: list[NarrativeGap] = []
+    coverage_score: float = 0.0  # pct of USPs covered
+    competitor_themes: dict[str, dict[str, int]] = {}  # brand → {attribute → claim count}
+
+
 class ExecutiveSummary(BaseModel):
     headline: str = ""
     key_findings: list[str] = []
@@ -99,4 +124,5 @@ class AnalysisResult(BaseModel):
     positioning: PositioningScore = PositioningScore()
     citations: CitationScore = CitationScore()
     competitor_analysis: CompetitorAnalysis = CompetitorAnalysis()
+    narrative: NarrativeAnalysis = NarrativeAnalysis()
     summary: ExecutiveSummary = ExecutiveSummary()

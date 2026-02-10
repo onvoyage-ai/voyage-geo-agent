@@ -33,7 +33,7 @@ class QueryConfig(BaseModel):
 
 class AnalysisConfig(BaseModel):
     analyzers: list[
-        Literal["mindshare", "mention-rate", "sentiment", "positioning", "citation", "competitor"]
+        Literal["mindshare", "mention-rate", "sentiment", "positioning", "citation", "competitor", "narrative"]
     ] = Field(
         default=[
             "mindshare",
@@ -42,6 +42,7 @@ class AnalysisConfig(BaseModel):
             "positioning",
             "citation",
             "competitor",
+            "narrative",
         ]
     )
 

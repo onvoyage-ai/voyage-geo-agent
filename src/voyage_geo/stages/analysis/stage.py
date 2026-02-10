@@ -13,13 +13,14 @@ from voyage_geo.stages.analysis.analyzers.citation import CitationAnalyzer
 from voyage_geo.stages.analysis.analyzers.competitor import CompetitorAnalyzer
 from voyage_geo.stages.analysis.analyzers.mention_rate import MentionRateAnalyzer
 from voyage_geo.stages.analysis.analyzers.mindshare import MindshareAnalyzer
+from voyage_geo.stages.analysis.analyzers.narrative import NarrativeAnalyzer
 from voyage_geo.stages.analysis.analyzers.positioning import PositioningAnalyzer
 from voyage_geo.stages.analysis.analyzers.sentiment import SentimentAnalyzer
 from voyage_geo.storage.filesystem import FileSystemStorage
 from voyage_geo.types.analysis import AnalysisResult, ExecutiveSummary
 from voyage_geo.types.brand import BrandProfile
 from voyage_geo.utils.progress import console, stage_header
-from voyage_geo.utils.text import extract_competitors_with_llm
+from voyage_geo.utils.text import extract_competitors_with_llm, extract_narratives_with_llm
 
 logger = structlog.get_logger()
 
@@ -30,6 +31,7 @@ ANALYZER_MAP = {
     "positioning": PositioningAnalyzer,
     "citation": CitationAnalyzer,
     "competitor": CompetitorAnalyzer,
+    "narrative": NarrativeAnalyzer,
 }
 
 
@@ -51,19 +53,30 @@ class AnalysisStage(PipelineStage):
         profile = ctx.brand_profile
         analyzers_enabled = ctx.config.analysis.analyzers
 
-        # Extract competitors from AI responses using LLM
+        # Extract competitors and narratives from AI responses using LLM
         extracted_competitors: list[str] = []
+        extracted_claims: list[dict] = []
         valid_results = [r for r in results if not r.error and r.response]
         if valid_results:
             providers = self.provider_registry.get_enabled()
             if providers:
-                console.print("  Extracting competitors with LLM...")
                 response_texts = [r.response for r in valid_results]
+                llm_provider = providers[0]
+
+                console.print("  Extracting competitors with LLM...")
                 extracted_competitors = await extract_competitors_with_llm(
-                    response_texts, profile.name, profile.category, providers[0]
+                    response_texts, profile.name, profile.category, llm_provider
                 )
                 if extracted_competitors:
                     console.print(f"  [green]Found competitors:[/green] {', '.join(extracted_competitors)}")
+
+                if "narrative" in analyzers_enabled:
+                    console.print("  Extracting narratives with LLM...")
+                    extracted_claims = await extract_narratives_with_llm(
+                        response_texts, profile.name, profile.category, llm_provider
+                    )
+                    if extracted_claims:
+                        console.print(f"  [green]Extracted {len(extracted_claims)} claims[/green]")
 
         analysis = AnalysisResult(run_id=ctx.run_id, brand=profile.name, analyzed_at=datetime.now(UTC).isoformat())
 
@@ -74,9 +87,11 @@ class AnalysisStage(PipelineStage):
             console.print(f"  Running [cyan]{analyzer_name}[/cyan] analyzer...")
             analyzer_instance = cls()
 
-            # Pass extracted competitors to analyzers that support it
+            # Pass extracted data to analyzers that support it
             if analyzer_name in ("mindshare", "competitor"):
                 result = analyzer_instance.analyze(results, profile, extracted_competitors=extracted_competitors)  # type: ignore[attr-defined]
+            elif analyzer_name == "narrative":
+                result = analyzer_instance.analyze(results, profile, extracted_claims=extracted_claims)  # type: ignore[attr-defined]
             else:
                 result = analyzer_instance.analyze(results, profile)  # type: ignore[attr-defined]
 
@@ -92,6 +107,8 @@ class AnalysisStage(PipelineStage):
                 analysis.citations = result
             elif analyzer_name == "competitor":
                 analysis.competitor_analysis = result
+            elif analyzer_name == "narrative":
+                analysis.narrative = result
 
         # Build executive summary
         analysis.summary = self._build_summary(analysis, profile)
@@ -140,6 +157,16 @@ class AnalysisStage(PipelineStage):
             recommendations.append("Create more authoritative content that AI models can reference")
         if sent.label != "positive":
             recommendations.append("Address negative narratives and strengthen positive brand signals")
+
+        # Narrative gap recommendations
+        missing_usps = [g.usp for g in analysis.narrative.gaps if not g.covered]
+        if missing_usps:
+            for usp in missing_usps[:3]:
+                recommendations.append(f"AI models don't mention your USP: \"{usp}\" — create content reinforcing this")
+        if analysis.narrative.coverage_score > 0:
+            findings.append(f"AI models cover {analysis.narrative.coverage_score*100:.0f}% of stated USPs")
+        if analysis.narrative.brand_negative_count > analysis.narrative.brand_positive_count:
+            weaknesses.append("More negative than positive claims in AI narratives")
 
         score = (mr * 30 + ms * 30 + (sent.overall + 1) / 2 * 20 + (1 / rank if rank > 0 else 0) * 20)
         score = min(max(round(score, 1), 0), 100)
