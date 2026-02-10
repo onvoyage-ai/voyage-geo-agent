@@ -1,0 +1,262 @@
+"""Voyage GEO CLI — powered by Typer + Rich."""
+
+from __future__ import annotations
+
+import asyncio
+
+import typer
+from rich.console import Console
+from rich.table import Table
+
+from voyage_geo import __version__
+
+app = typer.Typer(
+    name="voyage-geo",
+    help="Open source Generative Engine Optimization (GEO) analysis tool",
+    no_args_is_help=True,
+)
+console = Console()
+
+
+@app.command()
+def run(
+    brand: str = typer.Option(..., "--brand", "-b", help="Brand name to analyze"),
+    website: str | None = typer.Option(None, "--website", "-w", help="Brand website URL"),
+    providers: str = typer.Option(
+        "openai,anthropic,google,perplexity",
+        "--providers",
+        "-p",
+        help="Comma-separated provider names",
+    ),
+    queries: int = typer.Option(20, "--queries", "-q", help="Number of queries to generate"),
+    iterations: int = typer.Option(1, "--iterations", "-i", help="Iterations per query"),
+    formats: str = typer.Option("html,json", "--formats", "-f", help="Report formats (html,json,csv,markdown)"),
+    concurrency: int = typer.Option(10, "--concurrency", "-c", help="Concurrent API requests"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
+) -> None:
+    """Run full GEO analysis pipeline."""
+    from voyage_geo.config.loader import load_config
+
+    overrides = {
+        "brand": brand,
+        "website": website,
+        "queries": {"count": queries},
+        "execution": {"concurrency": concurrency, "iterations": iterations},
+        "report": {"formats": formats.split(",")},
+        "output_dir": output_dir,
+    }
+
+    config = load_config(overrides=overrides)
+
+    # Filter providers
+    requested = [p.strip() for p in providers.split(",")]
+    for name in list(config.providers.keys()):
+        if name not in requested:
+            config.providers[name].enabled = False
+
+    enabled = [n for n, p in config.providers.items() if p.enabled and p.api_key]
+    if not enabled:
+        console.print("[red]No providers configured with API keys.[/red]")
+        console.print("Set env vars: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, PERPLEXITY_API_KEY")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold blue]Voyage GEO[/bold blue] v{__version__}")
+    console.print(f"Brand: [bold]{brand}[/bold]")
+    console.print(f"Providers: {', '.join(enabled)}")
+    console.print(f"Queries: {queries} | Iterations: {iterations} | Concurrency: {concurrency}\n")
+
+    from voyage_geo.core.engine import VoyageGeoEngine
+
+    engine = VoyageGeoEngine(config)
+    result = asyncio.run(engine.run())
+
+    if result.analysis_result:
+        a = result.analysis_result
+        console.print()
+        console.print("[bold green]Analysis Complete[/bold green]")
+        console.print(f"  Score: [bold]{a.summary.overall_score}/100[/bold]")
+        console.print(f"  {a.summary.headline}")
+        console.print(f"  Run: {result.run_id}")
+        report_path = f"{output_dir}/{result.run_id}/reports/report.html"
+        console.print(f"  Report: [link=file://{report_path}]{report_path}[/link]")
+
+
+@app.command(name="providers")
+def list_providers(
+    test: bool = typer.Option(False, "--test", "-t", help="Run health checks"),
+) -> None:
+    """List and test configured providers."""
+    from voyage_geo.config.loader import load_config
+
+    config = load_config()
+
+    table = Table(title="Providers", show_header=True, header_style="bold")
+    table.add_column("Name")
+    table.add_column("API Key")
+    table.add_column("Model")
+    table.add_column("Status")
+
+    for name, pconfig in config.providers.items():
+        has_key = "set" if pconfig.api_key else "[red]missing[/red]"
+        model = pconfig.model or "default"
+        status = "[green]enabled[/green]" if pconfig.enabled else "[dim]disabled[/dim]"
+        table.add_row(name, has_key, model, status)
+
+    console.print(table)
+
+    if test:
+        console.print("\nRunning health checks...")
+        from voyage_geo.providers.registry import ProviderRegistry
+
+        registry = ProviderRegistry()
+        for name, pconfig in config.providers.items():
+            if pconfig.enabled and pconfig.api_key:
+                registry.register(name, pconfig)
+
+        async def _check():
+            for provider in registry.get_enabled():
+                result = await provider.health_check()
+                if result["healthy"]:
+                    console.print(f"  [green]OK[/green] {provider.name} ({result['latency_ms']}ms)")
+                else:
+                    console.print(f"  [red]FAIL[/red] {provider.name}: {result.get('error', 'unknown')}")
+
+        asyncio.run(_check())
+
+
+@app.command()
+def research(
+    brand: str = typer.Argument(..., help="Brand name to research"),
+    website: str | None = typer.Option(None, "--website", "-w", help="Brand website URL to scrape"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
+) -> None:
+    """Research a brand — build a profile from AI + web scraping."""
+    from voyage_geo.config.loader import load_config
+    from voyage_geo.core.context import create_run_context
+    from voyage_geo.providers.registry import ProviderRegistry
+    from voyage_geo.stages.research.stage import ResearchStage
+    from voyage_geo.storage.filesystem import FileSystemStorage
+
+    config = load_config(overrides={"brand": brand, "website": website, "output_dir": output_dir})
+    enabled = [n for n, p in config.providers.items() if p.enabled and p.api_key]
+    if not enabled:
+        console.print("[red]No providers configured with API keys.[/red]")
+        console.print("Set env vars: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, PERPLEXITY_API_KEY")
+        raise typer.Exit(1)
+
+    storage = FileSystemStorage(config.output_dir)
+    registry = ProviderRegistry()
+    for name, pconfig in config.providers.items():
+        if pconfig.enabled and pconfig.api_key:
+            registry.register(name, pconfig)
+
+    console.print(f"\n[bold blue]Voyage GEO[/bold blue] v{__version__}")
+    console.print(f"Researching: [bold]{brand}[/bold]")
+    if website:
+        console.print(f"Website: {website}\n")
+
+    async def _run():
+        ctx = create_run_context(config)
+        await storage.create_run_dir(ctx.run_id)
+        stage = ResearchStage(registry, storage)
+        ctx = await stage.execute(ctx)
+        return ctx
+
+    ctx = asyncio.run(_run())
+    if ctx.brand_profile:
+        p = ctx.brand_profile
+        console.print(f"\n[bold green]Brand Profile Built[/bold green]")
+        console.print(f"  Name: {p.name}")
+        console.print(f"  Industry: {p.industry}")
+        console.print(f"  Category: {p.category}")
+        console.print(f"  Competitors: {', '.join(p.competitors[:5])}")
+        console.print(f"  Keywords: {', '.join(p.keywords[:5])}")
+        console.print(f"  Saved to: {config.output_dir}/{ctx.run_id}/brand-profile.json")
+
+
+@app.command()
+def report(
+    run_id: str = typer.Option(..., "--run-id", "-r", help="Run ID to generate report from"),
+    formats: str = typer.Option("html,json", "--formats", "-f", help="Report formats (html,json,csv,markdown)"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
+) -> None:
+    """Generate reports from an existing run."""
+    from voyage_geo.config.loader import load_config
+    from voyage_geo.core.context import RunContext
+    from voyage_geo.stages.reporting.stage import ReportingStage
+    from voyage_geo.storage.filesystem import FileSystemStorage
+    from voyage_geo.types.analysis import AnalysisResult
+
+    config = load_config(overrides={"report": {"formats": formats.split(",")}, "output_dir": output_dir})
+    storage = FileSystemStorage(config.output_dir)
+
+    # Check run exists
+    run_dir = storage.run_dir(run_id)
+    if not run_dir.exists():
+        console.print(f"[red]Run not found:[/red] {run_id}")
+        console.print(f"Looking in: {run_dir}")
+        available = storage.list_runs()
+        if available:
+            console.print(f"Available runs: {', '.join(available[:5])}")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold blue]Voyage GEO[/bold blue] v{__version__}")
+    console.print(f"Generating reports for run: [bold]{run_id}[/bold]")
+    console.print(f"Formats: {formats}\n")
+
+    async def _run():
+        analysis_data = await storage.load_json(run_id, "analysis/analysis.json")
+        if not analysis_data:
+            console.print("[red]No analysis data found for this run.[/red]")
+            raise typer.Exit(1)
+
+        analysis = AnalysisResult(**analysis_data)
+        ctx = RunContext(run_id=run_id, config=config, started_at="", analysis_result=analysis)
+        stage = ReportingStage(storage)
+        await stage.execute(ctx)
+
+    asyncio.run(_run())
+    console.print(f"\n[bold green]Reports generated:[/bold green] {run_dir / 'reports'}")
+
+
+@app.command()
+def runs(
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
+) -> None:
+    """List past analysis runs."""
+    import json
+    from voyage_geo.storage.filesystem import FileSystemStorage
+
+    storage = FileSystemStorage(output_dir)
+    run_list = storage.list_runs()
+
+    if not run_list:
+        console.print("[dim]No runs found.[/dim]")
+        return
+
+    table = Table(title="Past Runs", show_header=True, header_style="bold")
+    table.add_column("Run ID")
+    table.add_column("Brand")
+    table.add_column("Status")
+    table.add_column("Date")
+
+    for rid in run_list[:20]:
+        meta_path = storage.run_dir(rid) / "metadata.json"
+        if meta_path.exists():
+            with open(meta_path) as f:
+                meta = json.load(f)
+            table.add_row(rid, meta.get("brand", "—"), meta.get("status", "—"), meta.get("started_at", "—")[:19])
+        else:
+            table.add_row(rid, "—", "—", "—")
+
+    console.print(table)
+
+
+@app.command()
+def version() -> None:
+    """Show version."""
+    console.print(f"voyage-geo v{__version__}")
+
+
+if __name__ == "__main__":
+    app()

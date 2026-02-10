@@ -1,0 +1,11 @@
+{
+  "name": "Notion",
+  "website": "https://notion.so",
+  "description": "All-in-one workspace for notes, docs, wikis, and project management",
+  "industry": "Productivity Software",
+  "category": "Project Management",
+  "competitors": ["Confluence", "Coda", "Obsidian", "Evernote", "Monday.com"],
+  "keywords": ["notion", "project management", "notes", "wiki", "workspace", "productivity"],
+  "uniqueSellingPoints": ["All-in-one workspace", "Flexible databases", "AI-powered features"],
+  "targetAudience": ["Teams", "Startups", "Students", "Freelancers"]
+}

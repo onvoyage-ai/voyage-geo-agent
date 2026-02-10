@@ -1,0 +1,62 @@
+[
+  {
+    "queryId": "kw-test001",
+    "queryText": "What is the best project management tool?",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "response": "There are several excellent project management tools available. Notion stands out as an all-in-one workspace that combines notes, wikis, and project management. Other popular options include Monday.com for its visual workflows, Confluence for team documentation, and Coda for its flexible approach. Notion is particularly popular among startups and small teams for its flexibility.",
+    "latencyMs": 1500,
+    "iteration": 1,
+    "timestamp": "2026-02-09T12:00:00Z"
+  },
+  {
+    "queryId": "kw-test002",
+    "queryText": "Recommend a good project management solution",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "response": "I'd recommend looking at a few options depending on your needs. For a versatile tool, Notion offers a powerful and customizable workspace. For more traditional project management, Monday.com provides excellent Gantt charts and workflows. Confluence is great if you're already in the Atlassian ecosystem.",
+    "latencyMs": 1200,
+    "iteration": 1,
+    "timestamp": "2026-02-09T12:00:01Z"
+  },
+  {
+    "queryId": "kw-test001",
+    "queryText": "What is the best project management tool?",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-5-20250929",
+    "response": "The best project management tool depends on your specific needs. Notion is a strong choice for teams that want an all-in-one workspace combining documentation, project tracking, and collaboration. Obsidian is excellent for personal knowledge management. For enterprise teams, Confluence paired with Jira provides robust project management capabilities. Coda offers a unique blend of docs and apps.",
+    "latencyMs": 1800,
+    "iteration": 1,
+    "timestamp": "2026-02-09T12:00:02Z"
+  },
+  {
+    "queryId": "kw-test002",
+    "queryText": "Recommend a good project management solution",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-5-20250929",
+    "response": "For project management, I recommend considering Notion as it offers a flexible workspace for teams. Monday.com is another solid option with strong visual project management features. If you need something lightweight, Obsidian works well for personal productivity. Evernote remains useful for basic note-taking needs.",
+    "latencyMs": 1600,
+    "iteration": 1,
+    "timestamp": "2026-02-09T12:00:03Z"
+  },
+  {
+    "queryId": "kw-test003",
+    "queryText": "Notion vs Confluence comparison",
+    "provider": "openai",
+    "model": "gpt-4o",
+    "response": "Notion and Confluence serve similar purposes but differ in approach. Notion is more flexible and modern, offering customizable databases and a clean interface. It's great for startups and small to medium teams. Confluence, on the other hand, integrates deeply with Jira and is more suitable for enterprise environments. Notion is generally easier to set up and use, while Confluence offers more structured documentation features.",
+    "latencyMs": 1400,
+    "iteration": 1,
+    "timestamp": "2026-02-09T12:00:04Z"
+  },
+  {
+    "queryId": "kw-test003",
+    "queryText": "Notion vs Confluence comparison",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-5-20250929",
+    "response": "Comparing Notion and Confluence: Notion is a versatile, modern workspace that's intuitive and flexible. It works well for diverse teams and offers powerful database features. Confluence is better for large enterprises already using Atlassian tools, providing structured documentation and integration with Jira. Notion is generally simpler and more affordable for smaller teams.",
+    "latencyMs": 1700,
+    "iteration": 1,
+    "timestamp": "2026-02-09T12:00:05Z"
+  }
+]

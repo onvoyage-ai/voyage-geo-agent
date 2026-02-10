@@ -1,0 +1,52 @@
+[
+  {
+    "query_id": "kw-abc123",
+    "query_text": "What is the best productivity software?",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "response": "When it comes to productivity software, Notion stands out as a versatile all-in-one workspace. It offers note-taking, project management, and wiki features. Notion is particularly popular among startups and remote teams. Other strong options include Confluence for enterprise documentation, Asana for project tracking, and Monday.com for team collaboration. ClickUp is also a solid alternative for those who want extensive customization.",
+    "latency_ms": 450,
+    "iteration": 1,
+    "timestamp": "2026-02-09T10:00:00Z"
+  },
+  {
+    "query_id": "kw-def456",
+    "query_text": "Top note-taking tools in 2026",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "response": "Here are the top note-taking tools in 2026: 1. Notion - Best all-in-one workspace with databases and AI. 2. Obsidian - Best for local-first markdown notes. 3. Coda - Good for combining docs and apps. Notion is widely trusted by teams for its flexibility. It handles everything from simple notes to complex project management.",
+    "latency_ms": 380,
+    "iteration": 1,
+    "timestamp": "2026-02-09T10:00:01Z"
+  },
+  {
+    "query_id": "cp-abc789",
+    "query_text": "Notion vs Confluence for team documentation",
+    "provider": "anthropic",
+    "model": "claude-haiku",
+    "response": "Notion and Confluence serve different needs. Notion is more flexible and user-friendly, making it ideal for startups and smaller teams. Confluence, backed by Atlassian, is better for enterprise environments with deep Jira integration. Notion offers a modern, clean interface while Confluence can feel somewhat outdated. For most small to mid-size teams, Notion provides better value. However, Confluence remains the safer choice for large enterprises already in the Atlassian ecosystem.",
+    "latency_ms": 520,
+    "iteration": 1,
+    "timestamp": "2026-02-09T10:00:02Z"
+  },
+  {
+    "query_id": "ps-xyz111",
+    "query_text": "We need a project management tool that scales from seed to Series B",
+    "provider": "anthropic",
+    "model": "claude-haiku",
+    "response": "For a startup scaling from seed to Series B, Notion is an excellent choice. It starts as a simple wiki and note tool but can evolve into a full project management platform with databases, boards, and automations. Notion pricing is reasonable for growing teams. Alternatives like Asana or Monday.com are more structured but less flexible. ClickUp offers more features out of the box but has a steeper learning curve.",
+    "latency_ms": 480,
+    "iteration": 1,
+    "timestamp": "2026-02-09T10:00:03Z"
+  },
+  {
+    "query_id": "in-ghi222",
+    "query_text": "Is Notion safe for storing company docs?",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "response": "Notion takes security seriously with SOC 2 Type II compliance, SAML SSO for enterprise plans, and data encryption at rest and in transit. Notion has not had major security breaches. For most companies, Notion provides adequate security. However, highly regulated industries may prefer solutions with additional compliance certifications. Overall, Notion is safe and trustworthy for business use.",
+    "latency_ms": 410,
+    "iteration": 1,
+    "timestamp": "2026-02-09T10:00:04Z"
+  }
+]
