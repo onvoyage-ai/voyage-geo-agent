@@ -14,11 +14,11 @@ from voyage_geo.providers.base import BaseProvider, ProviderResponse
 OPENROUTER_MODELS: dict[str, tuple[str, str]] = {
     "chatgpt": ("openai/gpt-5-mini", "ChatGPT"),
     "gemini": ("google/gemini-2.5-flash", "Gemini"),
-    "claude": ("anthropic/claude-4.5-sonnet-20250929", "Claude"),
+    "claude": ("anthropic/claude-sonnet-4.5", "Claude"),
     "perplexity-or": ("perplexity/sonar-pro", "Perplexity"),
     "deepseek": ("deepseek/deepseek-v3.2", "DeepSeek"),
-    "grok": ("x-ai/grok-4.1-fast", "Grok"),
-    "llama": ("meta-llama/llama-4-maverick-17b-128e-instruct", "Llama"),
+    "grok": ("x-ai/grok-3", "Grok"),
+    "llama": ("meta-llama/llama-4-maverick", "Llama"),
 }
 
 
