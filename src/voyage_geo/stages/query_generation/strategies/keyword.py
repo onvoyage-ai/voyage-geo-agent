@@ -1,4 +1,4 @@
-"""Keyword strategy — AI-generated discovery, evaluation, and feature queries."""
+"""Keyword strategy — short, natural discovery and evaluation queries."""
 
 from __future__ import annotations
 
@@ -13,36 +13,37 @@ YEAR = datetime.now(UTC).year
 
 
 def _build_prompt(profile: BrandProfile, count: int) -> str:
-    return f"""You are a GEO (Generative Engine Optimization) specialist. Generate {count} realistic search queries that real users would type into an AI chatbot (ChatGPT, Claude, Gemini, Perplexity) when researching the "{profile.category}" space.
+    return f"""Generate {count} search queries that real people would type into ChatGPT, Perplexity, or Google when looking for a {profile.category}.
 
-CATEGORY CONTEXT:
+CONTEXT:
 - Category: {profile.category}
 - Industry: {profile.industry}
-- Keywords: {", ".join(profile.keywords) or profile.category}
-- Key capabilities: {", ".join(profile.unique_selling_points) or "N/A"}
-- Target audience: {", ".join(profile.target_audience) or "general"}
+- Keywords: {", ".join(profile.keywords[:6]) or profile.category}
 - Year: {YEAR}
 
-QUERY TYPES TO MIX:
-- Discovery: "What's the best X?", "Top X tools", generic category exploration
-- Evaluation: reputation checks, trust signals, expert opinions
-- Feature-driven: queries about specific capabilities or use cases (use the keywords above)
-- Pricing/value: affordability, free tiers, cost comparisons
-- Problem-framing: "I need help with [problem], what tool?", "How do companies solve [keyword]?"
-- Industry-specific: queries for startups, enterprise, small business, specific verticals
+EXAMPLES of realistic queries (for a "project management tool"):
+- best project management tool for small teams
+- project management software with good free tier
+- what do companies use to track projects in 2026
+- affordable alternative to expensive PM tools
+- simple task management app for remote teams
+
+YOUR QUERIES MUST BE:
+- SHORT: 5-15 words max. Real people don't write paragraphs.
+- NATURAL: exactly how someone would type into a chatbot — lowercase, casual
+- PURCHASE-ORIENTED: the person is looking to discover, evaluate, or buy something in this category
+- VARIED: mix "best X", "X for [use case]", "how to choose X", "X recommendations", pricing questions
 
 RULES:
-- CRITICAL: NEVER include any specific brand or company name in the query text. All queries must be generic category-level questions.
-- Write them exactly as a real person would ask an AI chatbot — conversational, natural, sometimes messy
-- Mix short queries ("best {profile.category} {YEAR}") with longer conversational ones
-- Include the current year {YEAR} in a few queries naturally
-- Do NOT use placeholder brackets like {{brand}} or {{category}}
-- Each query must be on its own line
-- For each query, append a pipe | followed by a category from: recommendation, comparison, best-of, how-to, review, alternative, general
-- Then another pipe | followed by a short intent label
+- NEVER include any brand or company name
+- NO backstories, no "my wife and I", no multi-sentence queries
+- NO quotation marks around the query text
+- Each query on its own line in this format:
 
-FORMAT (one per line):
 <query text> | <category> | <intent>
+
+Categories: recommendation, comparison, best-of, how-to, review, alternative, general
+Intent: discovery, evaluation, pricing, use-case, problem-solving
 
 Generate exactly {count} queries:"""
 

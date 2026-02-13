@@ -27,10 +27,12 @@ class VoyageGeoEngine:
         *,
         interactive: bool = True,
         resume_run_id: str | None = None,
+        stop_after: str | None = None,
     ) -> None:
         self.config = config
         self.interactive = interactive
         self.resume_run_id = resume_run_id
+        self.stop_after = stop_after
         self.storage = FileSystemStorage(config.output_dir)
         self.provider_registry = ProviderRegistry()
         self.pipeline = Pipeline()
@@ -77,7 +79,7 @@ class VoyageGeoEngine:
             from voyage_geo.utils.interactive import review_brand_profile, review_queries
 
             self.pipeline.add_hook("research", review_brand_profile)
-            self.pipeline.add_hook("query_generation", review_queries)
+            self.pipeline.add_hook("query-generation", review_queries)
 
     async def _load_resume_context(self, ctx: RunContext) -> RunContext:
         """Load existing data from a previous run into the context."""
@@ -85,6 +87,7 @@ class VoyageGeoEngine:
         assert run_id is not None
 
         from voyage_geo.types.brand import BrandProfile
+        from voyage_geo.types.query import QuerySet
 
         profile_data = await self.storage.load_json(run_id, "brand-profile.json")
         if profile_data:
@@ -92,6 +95,11 @@ class VoyageGeoEngine:
             logger.info("engine.resume.loaded_profile", run_id=run_id)
         else:
             logger.warning("engine.resume.no_profile", run_id=run_id)
+
+        query_data = await self.storage.load_json(run_id, "queries.json")
+        if query_data:
+            ctx.query_set = QuerySet(**query_data)
+            logger.info("engine.resume.loaded_queries", run_id=run_id, count=len(ctx.query_set.queries))
 
         return ctx
 
@@ -114,7 +122,7 @@ class VoyageGeoEngine:
         })
 
         try:
-            result = await self.pipeline.run(ctx)
+            result = await self.pipeline.run(ctx, stop_after=self.stop_after)
             result.completed_at = datetime.now(UTC).isoformat()
 
             await self.storage.save_metadata(ctx.run_id, {

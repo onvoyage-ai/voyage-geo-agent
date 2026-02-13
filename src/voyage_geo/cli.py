@@ -37,6 +37,7 @@ def run(
     processing_model: str | None = typer.Option(None, "--processing-model", help="Model for non-execution LLM calls (default: claude-opus-4-6)"),
     interactive: bool = typer.Option(True, "--interactive/--no-interactive", help="Interactive review checkpoints after research & query generation"),
     resume: str | None = typer.Option(None, "--resume", "-r", help="Resume from an existing run ID (skips research, reuses brand profile)"),
+    stop_after: str | None = typer.Option(None, "--stop-after", help="Stop pipeline after this stage (e.g. research, query-generation)"),
 ) -> None:
     """Run full GEO analysis pipeline."""
     from voyage_geo.config.loader import load_config
@@ -91,7 +92,7 @@ def run(
                 console.print(f"Available runs: {', '.join(available[:5])}")
             raise typer.Exit(1)
 
-    engine = VoyageGeoEngine(config, interactive=interactive, resume_run_id=resume)
+    engine = VoyageGeoEngine(config, interactive=interactive, resume_run_id=resume, stop_after=stop_after)
     result = asyncio.run(engine.run())
 
     if result.analysis_result:

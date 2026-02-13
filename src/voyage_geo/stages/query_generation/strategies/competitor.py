@@ -1,4 +1,4 @@
-"""Competitor strategy — AI-generated head-to-head and switching queries."""
+"""Competitor strategy — queries about alternatives and head-to-head comparisons."""
 
 from __future__ import annotations
 
@@ -14,35 +14,38 @@ YEAR = datetime.now(UTC).year
 
 def _build_prompt(profile: BrandProfile, count: int) -> str:
     competitors = ", ".join(profile.competitors) if profile.competitors else "major alternatives in the space"
-    return f"""You are a GEO specialist. Generate {count} realistic AI chatbot queries about the COMPETITIVE LANDSCAPE in the "{profile.category}" space.
+    return f"""Generate {count} search queries about the competitive landscape in "{profile.category}".
 
-CATEGORY CONTEXT:
+CONTEXT:
 - Category: {profile.category}
 - Industry: {profile.industry}
-- Known players in the space: {competitors}
-- Keywords: {", ".join(profile.keywords) or profile.category}
+- Known competitors: {competitors}
 - Year: {YEAR}
 
-QUERY TYPES TO MIX:
-- Alternative-seeking: "[known player] alternatives", "what else is like [known player]?"
-- Head-to-head between competitors: "[player A] vs [player B]"
-- Landscape overview: "top {profile.category} tools {YEAR}", "who are the main players in {profile.category}?"
-- Switching: "thinking of switching from [known player], what are my options?"
-- Value comparison: "which {profile.category} tool has the best pricing?"
-- Use-case comparison: "[known player] vs others for [specific use case]"
+These queries CAN and SHOULD mention competitor names from the list above. The goal is to see if AI models recommend {profile.name} when someone asks about competitors.
+
+EXAMPLES of realistic competitor queries (for "spend management platform", competitors: Ramp, Divvy, Airbase):
+- ramp alternatives {YEAR} | alternative | switching
+- divvy vs other corporate card options | comparison | head-to-head
+- what are the best alternatives to airbase | alternative | discovery
+- companies like ramp but cheaper | alternative | pricing
+- is there something better than divvy for startups | alternative | evaluation
+- top corporate card platforms besides ramp | best-of | landscape
+
+YOUR QUERIES MUST BE:
+- SHORT: 5-15 words max
+- NATURAL: how real people ask chatbots for competitor info
+- Use competitor names from the list — rotate through them
 
 RULES:
-- CRITICAL: NEVER mention {profile.name} in any query. We want to see if AI models recommend it organically.
-- You CAN and SHOULD use the competitor names listed above — rotate through them
-- Sound like real people asking AI chatbots for help deciding
-- Conversational, natural phrasing
-- Include {YEAR} in a few queries
+- NEVER mention {profile.name} — that's the brand we're measuring
+- Keep queries short and direct
+- Each query on its own line:
 
-FORMAT (one per line):
 <query text> | <category> | <intent>
 
-Categories: comparison, alternative, recommendation, review, general
-Intent: head-to-head, decision, switching, migration, evaluation, cost, use-case, landscape, trust
+Categories: comparison, alternative, recommendation, review, best-of, general
+Intent: head-to-head, switching, discovery, pricing, evaluation, landscape
 
 Generate exactly {count} queries:"""
 

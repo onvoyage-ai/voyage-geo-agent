@@ -35,6 +35,10 @@ class QueryGenerationStage(PipelineStage):
     async def execute(self, ctx: RunContext) -> RunContext:
         stage_header(self.name, self.description)
 
+        if ctx.query_set:
+            console.print(f"  [dim]Using existing query set ({len(ctx.query_set.queries)} queries)[/dim]")
+            return ctx
+
         if not ctx.brand_profile:
             raise RuntimeError("Brand profile is required for query generation")
 

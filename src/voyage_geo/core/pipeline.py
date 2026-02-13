@@ -33,7 +33,7 @@ class Pipeline:
         """Register a callback to run after a named stage completes."""
         self._hooks[after_stage] = callback
 
-    async def run(self, ctx: RunContext) -> RunContext:
+    async def run(self, ctx: RunContext, *, stop_after: str | None = None) -> RunContext:
         current = ctx
         current.status = "running"
 
@@ -50,6 +50,11 @@ class Pipeline:
 
             if stage.name in self._hooks:
                 current = await self._hooks[stage.name](current)
+
+            if stop_after and stage.name == stop_after:
+                logger.info("pipeline.stopped_after", stage=stage.name)
+                current.status = "completed"
+                return current
 
         current.status = "completed"
         return current

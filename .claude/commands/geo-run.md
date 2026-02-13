@@ -4,117 +4,109 @@ You are running a GEO (Generative Engine Optimization) analysis. Be fast and eff
 
 ```
 python3 -m voyage_geo research "<brand>" --website "<url>"
-python3 -m voyage_geo run --brand "<name>" --website "<url>" --resume <run-id> --no-interactive --providers chatgpt,gemini,claude -f html,json,csv,markdown
-python3 -m voyage_geo providers          # list configured providers
-python3 -m voyage_geo providers --test   # health check providers
+python3 -m voyage_geo run -b "<name>" --resume <run-id> --stop-after query-generation --no-interactive
+python3 -m voyage_geo run -b "<name>" --resume <run-id> --no-interactive -p <providers> -f html,json,csv,markdown
+python3 -m voyage_geo providers
 ```
 
-Flags for `run`:
+Key flags for `run`:
 - `--brand / -b` (required) — brand name
 - `--website / -w` — brand website URL
-- `--providers / -p` — comma-separated provider names (default: chatgpt,gemini,claude,perplexity-or,deepseek,grok,llama)
+- `--providers / -p` — comma-separated provider names
 - `--queries / -q` — number of queries (default: 20)
-- `--iterations / -i` — iterations per query (default: 1)
 - `--formats / -f` — report formats (default: html,json)
-- `--concurrency / -c` — concurrent API requests (default: 10)
-- `--output-dir / -o` — output directory (default: ./data/runs)
-- `--resume / -r` — resume from an existing run ID (reuses that run's brand profile and directory, skips research)
-- `--no-interactive` — skip interactive review checkpoints (use when running through Claude Code)
+- `--resume / -r` — resume from existing run ID (reuses brand profile + queries if they exist)
+- `--stop-after` — stop after a stage (e.g. `research`, `query-generation`)
+- `--no-interactive` — skip terminal-based review prompts (always use this from Claude Code)
 
 ## Step 1: Get the Brand
 
 Ask ONE question: "What brand do you want to analyze?"
 
-If they also mention a website, great. If not, and the brand is well-known (e.g., Bybit, Notion, Shopify, Nike), just proceed — you already know what it is. Only ask follow-up questions if the brand is obscure or ambiguous.
-
-Optional quick follow-up ONLY if needed: "Any specific competitors to track?" — but if the brand is well-known, just let the AI research stage figure out competitors automatically.
+If they also mention a website, great. If not, and the brand is well-known, just proceed. Only ask follow-up questions if the brand is obscure or ambiguous.
 
 ## Step 2: Check Providers
 
-Run `python3 -m voyage_geo providers` silently. If at least one provider has an API key, proceed. If none, tell the user they need at least one key and help them set it up in `.env`.
+Run `python3 -m voyage_geo providers` silently. If at least one provider has an API key, proceed. If none, help set up `.env`.
 
 ## Step 3: Research the Brand
 
 Do TWO things in parallel:
 
-**A) Run the CLI research stage:**
+**A) Run CLI research:**
 ```
 python3 -m voyage_geo research "<brand>" -w "<url>"
 ```
-This scrapes the website and builds an initial brand profile via LLM. Note the run ID from the output.
+Note the run ID from the output.
 
-**B) Do your own web research using WebSearch and WebFetch:**
-Run 2-3 web searches to understand the brand independently:
-- `"<brand>" what is` — understand what the company does
-- `"<brand>" vs competitors alternatives` — identify the competitive landscape
-- `"<brand>" reviews` — understand reputation and USPs from real users
+**B) Your own web research (WebSearch + WebFetch):**
+- `"<brand>" what is` — what the company does
+- `"<brand>" vs competitors alternatives` — competitive landscape
+- `"<brand>" reviews` — reputation and USPs
 
-Also WebFetch the brand's website if a URL was provided — you often get better results than the CLI scraper (which can hit 403s).
-
-Skim the search results and website content. Build your own mental model of: what the brand does, who it competes with, what makes it unique, and who uses it.
+Also WebFetch the brand website if URL provided (backup for 403s).
 
 ## Step 4: Review Brand Profile with User
 
-Read the CLI-generated profile from `data/runs/<run-id>/brand-profile.json`. Cross-reference it with what you learned from web search. If the CLI profile is missing competitors, has wrong industry, or lacks key USPs that you found in your web research — fix the profile by editing `brand-profile.json` before showing it to the user.
+Read `data/runs/<run-id>/brand-profile.json`. Cross-reference with your web research. Fix the profile if the CLI got things wrong, then present it:
 
-Present the (corrected) brand profile:
+> **Brand Profile: [name]**
+> **Description:** ...
+> **Industry:** ... | **Category:** ...
+> **Competitors:** ...
+> **Keywords:** ...
+> **USPs:** ...
+> **Target Audience:** ...
 
-- **Description**: what the brand does
-- **Industry & Category**
-- **Competitors**: the list of identified competitors
-- **Keywords**: search terms that will drive query generation
-- **USPs**: unique selling points
-- **Target Audience**
+Ask: **"Does this look right? Want to adjust anything before I generate the test queries?"**
 
-Format it clearly, e.g.:
+If user wants changes, edit `brand-profile.json` to apply them.
 
-> **Brand Profile: Nikux**
->
-> **Description:** [description from profile]
-> **Industry:** [industry] | **Category:** [category]
->
-> **Competitors:** Comp1, Comp2, Comp3, ...
-> **Keywords:** keyword1, keyword2, keyword3, ...
-> **USPs:** usp1, usp2, usp3, ...
-> **Target Audience:** segment1, segment2, ...
+## Step 5: Generate Queries
 
-Then ask the user: **"Does this look right? Want to adjust anything (competitors, keywords, USPs) before I run the full analysis?"**
-
-This is CRITICAL — the entire analysis (queries, execution, scoring) is based on this profile. Wrong competitors or missing USPs will produce misleading results. Always pause here.
-
-If the user wants changes, edit `brand-profile.json` to apply them.
-
-## Step 5: Run Full Analysis
-
-Once confirmed, run the full pipeline using `--resume` to reuse the research run's brand profile and directory:
+Once the brand profile is confirmed, generate queries only (not the full execution):
 
 ```
-python3 -m voyage_geo run -b "<name>" -w "<url>" --resume <run-id> -p <configured-providers> -f html,json,csv,markdown --no-interactive
+python3 -m voyage_geo run -b "<name>" --resume <run-id> --stop-after query-generation --no-interactive
 ```
 
-The `--resume` flag tells the engine to load the existing brand profile from that run and skip the research stage. All subsequent stages (query generation, execution, analysis, reporting) run in the same directory.
+This generates the simulated search queries and saves them to `data/runs/<run-id>/queries.json`, then stops — it does NOT run them against AI models yet.
 
-## Step 6: Show the Queries
+## Step 6: Review Queries with User
 
-After the run, read `data/runs/<run-id>/queries.json` and present the queries to the user in a markdown table:
+Read `data/runs/<run-id>/queries.json` and present them in a table:
 
-| # | Strategy | Category | Simulated User Query |
-|---|----------|----------|---------------------|
-| 1 | keyword  | best-of  | What is the best crypto exchange in 2024? |
-| 2 | competitor | comparison | Bybit vs Binance — which is better? |
+| # | Strategy | Category | Query |
+|---|----------|----------|-------|
+| 1 | keyword | best-of | best wagyu restaurant in los angeles |
+| 2 | competitor | alternative | yazawa alternatives 2026 |
 | ... | ... | ... | ... |
 
-This shows the user exactly what "questions" were asked to each AI model.
+Show the total count and breakdown by strategy.
 
-## Step 7: Present Results
+Ask: **"These are the queries I'll send to all AI models. Look good? Want me to remove or change any before I run?"**
+
+If the user wants changes, edit `queries.json` directly (remove entries, adjust query text, update `total_count`).
+
+This review is important — these queries determine the entire analysis. Bad queries = meaningless results.
+
+## Step 7: Run Full Execution
+
+Once queries are confirmed, run the full pipeline. Since both profile and queries now exist in the run directory, they'll be loaded and the expensive stages (execution → analysis → reporting) will run:
+
+```
+python3 -m voyage_geo run -b "<name>" --resume <run-id> -p <configured-providers> -f html,json,csv,markdown --no-interactive
+```
+
+## Step 8: Present Results
 
 Read `data/runs/<run-id>/analysis/summary.json` and `analysis/analysis.json`. Present a tight summary:
 
 - Overall AI visibility score
 - Mention rate across providers (table: provider | mention rate | sentiment)
 - Competitor rank (if applicable)
-- Narrative analysis: what themes AI models associate with the brand (`analysis.narrative.brand_themes`), and which USPs AI models are missing (`analysis.narrative.gaps` — highlight any with `covered: false`)
-- Coverage score: what percentage of USPs are being mentioned by AI models
-- Top 2-3 recommendations (including narrative gap recommendations)
+- Narrative analysis: what themes AI models associate with the brand, and which USPs AI models are missing
+- Coverage score: what percentage of USPs are being mentioned
+- Top 2-3 recommendations
 
 Tell them the report location. Ask "Want to dig deeper into any finding?"
