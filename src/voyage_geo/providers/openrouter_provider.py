@@ -13,7 +13,7 @@ from voyage_geo.providers.base import BaseProvider, ProviderResponse
 # CLI name → (OpenRouter model ID, display name)
 OPENROUTER_MODELS: dict[str, tuple[str, str]] = {
     "chatgpt": ("openai/gpt-5-mini", "ChatGPT"),
-    "gemini": ("google/gemini-2.5-flash", "Gemini"),
+    "gemini": ("google/gemini-3-flash-preview", "Gemini"),
     "claude": ("anthropic/claude-sonnet-4.5", "Claude"),
     "perplexity-or": ("perplexity/sonar-pro", "Perplexity"),
     "deepseek": ("deepseek/deepseek-v3.2", "DeepSeek"),

@@ -17,7 +17,7 @@ DEFAULT_PROVIDERS: dict[str, ProviderConfig] = {
     ),
     "google": ProviderConfig(
         name="google",
-        model="gemini-2.5-flash",
+        model="gemini-3-flash-preview",
         max_tokens=512,
         temperature=0.7,
     ),
