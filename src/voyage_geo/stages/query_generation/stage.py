@@ -23,6 +23,13 @@ STRATEGY_MAP = {
     "intent": intent.generate,
 }
 
+# Industries/categories where "[competitor] alternatives" is a natural query pattern
+_COMPETITOR_STRATEGY_KEYWORDS = {
+    "saas", "software", "platform", "tool", "app", "service",
+    "fintech", "edtech", "martech", "devtools", "cloud",
+    "crm", "erp", "cms", "analytics", "automation",
+}
+
 
 class QueryGenerationStage(PipelineStage):
     name = "query-generation"
@@ -44,11 +51,20 @@ class QueryGenerationStage(PipelineStage):
 
         profile = ctx.brand_profile
         query_config = ctx.config.queries
-        strategies_enabled = query_config.strategies
+        strategies_enabled = list(query_config.strategies)
         total_count = query_config.count
+
+        # Auto-enable competitor strategy for SaaS/software/platform categories
+        if "competitor" not in strategies_enabled and profile.competitors:
+            category_lower = (profile.category + " " + profile.industry).lower()
+            if any(kw in category_lower for kw in _COMPETITOR_STRATEGY_KEYWORDS):
+                strategies_enabled.append("competitor")
+                console.print(f"  [dim]Auto-enabled competitor strategy (SaaS/software category)[/dim]")
+
         per_strategy = -(-total_count // len(strategies_enabled))  # ceil div
 
         console.print(f"  Generating queries via [bold]{self.processing_provider.display_name}[/bold]...")
+        console.print(f"  [dim]Strategies: {', '.join(strategies_enabled)}[/dim]")
 
         all_queries: list[GeneratedQuery] = []
 

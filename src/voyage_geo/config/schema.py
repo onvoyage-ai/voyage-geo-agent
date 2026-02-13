@@ -27,7 +27,7 @@ class ExecutionConfig(BaseModel):
 class QueryConfig(BaseModel):
     count: int = 20
     strategies: list[Literal["keyword", "persona", "competitor", "intent"]] = Field(
-        default=["keyword", "persona", "competitor", "intent"]
+        default=["keyword", "persona", "intent"]
     )
 
 
