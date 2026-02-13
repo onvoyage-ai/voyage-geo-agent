@@ -1,94 +1,133 @@
 # Voyage GEO
 
-Open source **Generative Engine Optimization** CLI tool. Analyze how AI models (ChatGPT, Claude, Gemini, Perplexity) reference and recommend your brand.
+Open source **Generative Engine Optimization** (GEO) CLI tool. Analyze how AI models (ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Llama) reference and recommend your brand.
 
-## Installation
+Think of it as **SEO analytics, but for AI search engines.**
 
-```bash
-# Clone and install
-git clone https://github.com/your-org/voyage-geo-agent.git
-cd voyage-geo-agent
-pnpm install
-pnpm build
+## How It Works
 
-# Or install globally
-pnpm link --global
 ```
+Brand Input → Research → Generate Queries → Run Against AI Models → Analyze → Report
+```
+
+1. **Research** your brand — scrapes your website, builds a brand profile with competitors, USPs, keywords
+2. **Generate queries** — creates realistic search queries real people would type into ChatGPT/Perplexity (brand-blind, so queries never mention your brand)
+3. **Execute** — sends queries to multiple AI models via OpenRouter (or direct API keys)
+4. **Analyze** — measures mention rate, sentiment, mindshare, competitor positioning, narrative themes, USP coverage gaps
+5. **Report** — generates interactive HTML reports with charts, plus JSON/CSV/Markdown exports
 
 ## Quick Start
 
+### Prerequisites
+
+- Python 3.11+
+- An [OpenRouter API key](https://openrouter.ai/keys) (one key for all AI models), or individual provider API keys
+
+### Install
+
 ```bash
-# 1. Set up your API keys
-cp .env.example .env
-# Edit .env with your API keys
-
-# 2. Interactive setup
-voyage-geo config --init
-
-# 3. Run a full analysis
-voyage-geo run --brand "Notion" --website "https://notion.so" \
-  --providers openai,anthropic,google,perplexity
+git clone https://github.com/Onvoyage-AI/voyage-geo-agent.git
+cd voyage-geo-agent
+pip install -e .
 ```
+
+### Configure API Keys
+
+```bash
+cp .env.example .env
+# Edit .env — at minimum, set OPENROUTER_API_KEY
+```
+
+### Run an Analysis
+
+```bash
+# Full pipeline
+python3 -m voyage_geo run -b "YourBrand" -w "https://yourbrand.com" --no-interactive
+
+# Or with specific providers
+python3 -m voyage_geo run -b "YourBrand" -w "https://yourbrand.com" \
+  -p chatgpt,gemini,claude,perplexity-or -f html,json,csv,markdown --no-interactive
+```
+
+## Using with Claude Code
+
+Voyage GEO is designed to work as a conversational tool through [Claude Code](https://docs.anthropic.com/en/docs/claude-code). The slash commands give you an interactive experience where Claude walks you through each step:
+
+- **`/geo-setup`** — First-time onboarding. Installs deps, configures API keys, verifies everything works.
+- **`/geo-run`** — Full GEO analysis. Claude interviews you about your brand, runs the pipeline, reviews results with you.
+- **`/geo-research`** — Deep-dive brand research with web search and site scraping.
+- **`/geo-explore`** — Explore past analysis results interactively.
+- **`/geo-report`** — Generate shareable reports from existing runs.
+- **`/geo-debug`** — Diagnose and fix failed runs.
 
 ## CLI Reference
 
-### Full Pipeline
-
 ```bash
-voyage-geo run --brand "Notion" --website "https://notion.so" \
-  --providers openai,anthropic,google,perplexity \
-  --iterations 3 --queries 25
+# Full analysis pipeline
+python3 -m voyage_geo run -b "<brand>" -w "<url>" -p chatgpt,gemini,claude --no-interactive
+
+# Research a brand (builds profile)
+python3 -m voyage_geo research "<brand>" -w "<url>"
+
+# List configured providers
+python3 -m voyage_geo providers
+
+# Health check providers
+python3 -m voyage_geo providers --test
+
+# Generate reports from an existing run
+python3 -m voyage_geo report -r <run-id> -f html,json,csv,markdown
+
+# List past runs
+python3 -m voyage_geo runs
+
+# Show version
+python3 -m voyage_geo version
 ```
 
-### Individual Stages
+### Key Flags for `run`
+
+| Flag | Description |
+|------|-------------|
+| `-b, --brand` | Brand name (required) |
+| `-w, --website` | Brand website URL |
+| `-p, --providers` | Comma-separated providers (default: all via OpenRouter) |
+| `-q, --queries` | Number of queries to generate (default: 20) |
+| `-f, --formats` | Report formats: html, json, csv, markdown (default: html,json) |
+| `-r, --resume` | Resume from existing run ID |
+| `--stop-after` | Stop after a stage (research, query-generation) |
+| `--no-interactive` | Skip interactive review prompts |
+
+## Supported AI Models
+
+All models are accessible through a single [OpenRouter](https://openrouter.ai) API key:
+
+| CLI Name | Model | Provider |
+|----------|-------|----------|
+| `chatgpt` | GPT-5 Mini | OpenAI |
+| `gemini` | Gemini 3 Flash Preview | Google |
+| `claude` | Claude Sonnet 4.5 | Anthropic |
+| `perplexity-or` | Sonar Pro | Perplexity |
+| `deepseek` | DeepSeek V3.2 | DeepSeek |
+| `grok` | Grok 3 | xAI |
+| `llama` | Llama 4 Maverick | Meta |
+
+You can also use direct API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.) for individual providers.
+
+## Environment Variables
 
 ```bash
-# Research a brand
-voyage-geo research "Notion" --website "https://notion.so"
+# OpenRouter (recommended — one key for all models)
+OPENROUTER_API_KEY=sk-or-v1-...
 
-# Generate queries for an existing run
-voyage-geo query --run-id <id>
+# Direct provider keys (optional)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=AI...
+PERPLEXITY_API_KEY=pplx-...
 
-# Execute queries against providers
-voyage-geo execute --run-id <id> --providers openai,anthropic
-
-# Analyze results
-voyage-geo analyze --run-id <id>
-
-# Generate reports
-voyage-geo report --run-id <id> --format html,json,csv
-```
-
-### Utilities
-
-```bash
-# Health check all configured providers
-voyage-geo providers --test
-
-# Interactive config setup
-voyage-geo config --init
-
-# List available providers
-voyage-geo providers --list
-```
-
-## Configuration
-
-Configuration is merged from multiple sources (lowest to highest priority):
-
-1. Built-in defaults
-2. Config file (`voyage-geo.config.json` or `--config` flag)
-3. Environment variables
-4. CLI flags
-
-### Environment Variables
-
-```bash
-OPENAI_API_KEY=sk-...          # OpenAI/ChatGPT
-ANTHROPIC_API_KEY=sk-ant-...   # Anthropic/Claude
-GOOGLE_API_KEY=AI...           # Google/Gemini
-PERPLEXITY_API_KEY=pplx-...    # Perplexity
-LOG_LEVEL=info                 # debug, info, warn, error
+# Optional
+LOG_LEVEL=info
 VOYAGE_GEO_OUTPUT_DIR=./data/runs
 VOYAGE_GEO_CONCURRENCY=3
 ```
@@ -98,7 +137,7 @@ VOYAGE_GEO_CONCURRENCY=3
 Each run creates a self-contained directory:
 
 ```
-data/runs/run-20260209-143022-abc123/
+data/runs/<run-id>/
 ├── metadata.json           # Run config and status
 ├── brand-profile.json      # Brand research output
 ├── queries.json            # Generated search queries
@@ -116,14 +155,49 @@ data/runs/run-20260209-143022-abc123/
     └── charts/             # PNG chart images
 ```
 
+## Architecture
+
+```
+src/voyage_geo/
+├── cli.py                # CLI entry (Typer + Rich)
+├── config/               # Pydantic schemas, defaults, config loader
+├── core/                 # Engine, pipeline, context, errors
+├── providers/            # AI model providers (OpenRouter, OpenAI, Anthropic, Google, Perplexity)
+├── stages/
+│   ├── research/         # Stage 1: Brand research + web scraping
+│   ├── query_generation/ # Stage 2: Generate search queries (keyword, persona, intent strategies)
+│   ├── execution/        # Stage 3: Run queries against providers
+│   ├── analysis/         # Stage 4: Analyze results (6 analyzers)
+│   └── reporting/        # Stage 5: Generate reports (HTML/JSON/CSV/Markdown)
+├── storage/              # File-based persistence
+├── types/                # Shared Pydantic type definitions
+└── utils/                # Text helpers, Rich progress displays
+```
+
 ## Extending
 
-See the [docs/](./docs/) directory for guides on adding:
+| What | Interface | Location |
+|------|-----------|----------|
+| AI Provider | `BaseProvider` ABC | `src/voyage_geo/providers/` |
+| Query Strategy | async `generate()` function | `src/voyage_geo/stages/query_generation/strategies/` |
+| Analyzer | `Analyzer` Protocol | `src/voyage_geo/stages/analysis/analyzers/` |
+| Report Format | Method in `ReportingStage` | `src/voyage_geo/stages/reporting/stage.py` |
 
-- [New AI Providers](./docs/providers.md)
-- [New Analyzers](./docs/analyzers.md)
-- [New Query Strategies](./docs/query-strategies.md)
+See the [docs/](./docs/) directory for detailed guides on adding [providers](./docs/providers.md), [analyzers](./docs/analyzers.md), and [query strategies](./docs/query-strategies.md).
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+python3 -m pytest tests/ -v
+python3 -m ruff check src/ tests/
+python3 -m mypy src/voyage_geo/ --ignore-missing-imports
+```
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT
+MIT — see [LICENSE](./LICENSE) for details.

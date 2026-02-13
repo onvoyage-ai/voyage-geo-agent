@@ -1,81 +1,81 @@
 # Adding a New Query Strategy
 
-Query strategies generate different types of search queries to test brand visibility.
+Query strategies generate different types of search queries to test brand visibility. All strategies generate **brand-blind queries** — the target brand name must never appear in query text.
 
 ## 1. Create the Strategy
 
-Create `src/stages/query-generation/strategies/<name>.ts`:
+Create `src/voyage_geo/stages/query_generation/strategies/<name>.py`:
 
-```typescript
-import { randomBytes } from 'node:crypto';
-import type { BrandProfile } from '../../../types/brand.js';
-import type { GeneratedQuery } from '../../../types/query.js';
-import type { QueryStrategyInterface } from './types.js';
+```python
+"""My strategy — description of what angle this covers."""
 
-export class MyStrategy implements QueryStrategyInterface {
-  name = 'my-strategy';
+from __future__ import annotations
 
-  generate(profile: BrandProfile, count: number): GeneratedQuery[] {
-    const queries: GeneratedQuery[] = [];
+from voyage_geo.providers.base import BaseProvider
+from voyage_geo.stages.query_generation.strategies.parse import parse_ai_queries
+from voyage_geo.types.brand import BrandProfile
+from voyage_geo.types.query import GeneratedQuery
 
-    for (let i = 0; i < count; i++) {
-      queries.push({
-        id: `ms-${randomBytes(4).toString('hex')}`,
-        text: `Your query text using ${profile.name}`,
-        category: 'recommendation',
-        strategy: 'my-strategy' as any,
-        intent: 'discovery',
-        metadata: { /* optional extra data */ },
-      });
-    }
 
-    return queries;
-  }
-}
+def _build_prompt(profile: BrandProfile, count: int) -> str:
+    return f"""Generate {count} search queries for "{profile.category}".
+
+CONTEXT:
+- Category: {profile.category}
+- Industry: {profile.industry}
+- Keywords: {", ".join(profile.keywords[:6]) or profile.category}
+
+YOUR QUERIES MUST BE:
+- SHORT: 5-12 words
+- CONVERSATIONAL: sounds like something you'd say to ChatGPT
+- NEVER include any brand or company name
+
+Each query on its own line:
+<query text> | <category> | <intent>
+
+Categories: recommendation, comparison, best-of, how-to, review, alternative, general
+Intent: discovery, evaluation, pricing, use-case, problem-solving
+
+Generate exactly {count} queries:"""
+
+
+async def generate(
+    profile: BrandProfile, count: int, provider: BaseProvider
+) -> list[GeneratedQuery]:
+    prompt = _build_prompt(profile, count)
+    response = await provider.query(prompt)
+    return parse_ai_queries(response.text, "my-strategy", "ms", count)
 ```
 
 ## 2. Register the Strategy
 
-In `src/stages/query-generation/stage.ts`, add to `STRATEGY_MAP`:
+In `src/voyage_geo/stages/query_generation/stage.py`, add to `STRATEGY_MAP`:
 
-```typescript
-import { MyStrategy } from './strategies/my-strategy.js';
+```python
+from voyage_geo.stages.query_generation.strategies import my_strategy
 
-const STRATEGY_MAP: Record<string, () => QueryStrategyInterface> = {
-  // ... existing strategies
-  'my-strategy': () => new MyStrategy(),
-};
+STRATEGY_MAP = {
+    # ... existing strategies
+    "my-strategy": my_strategy,
+}
 ```
 
-## 3. Update Config Schema
+## 3. Update Config
 
-In `src/config/schema.ts`, add to the strategies enum:
-
-```typescript
-strategies: z.array(z.enum([
-  'keyword', 'persona', 'competitor', 'intent',
-  'my-strategy',
-])),
-```
-
-Also update `src/types/query.ts`:
-
-```typescript
-export type QueryStrategy = 'keyword' | 'persona' | 'competitor' | 'intent' | 'my-strategy';
-```
+Add your strategy name to the default strategies list in `src/voyage_geo/config/schema.py`.
 
 ## Built-in Strategies
 
-| Strategy | Description |
-|----------|-------------|
-| `keyword` | Template-based queries using brand keywords and category |
-| `persona` | Queries from different user personas (developer, business owner, etc.) |
-| `competitor` | Head-to-head comparison queries (brand vs competitor) |
-| `intent` | Queries based on search intent (informational, navigational, commercial, transactional) |
+| Strategy | Description | Default |
+|----------|-------------|---------|
+| `keyword` | Generic discovery and evaluation queries using category keywords | Yes |
+| `persona` | Queries from different buyer angles (budget, premium, first-timer, switcher) | Yes |
+| `intent` | Covers commercial, informational, trust, transactional, and comparative intents | Yes |
+| `competitor` | Queries mentioning competitor names (auto-enabled for SaaS/software only) | No |
 
-## Tips
+## Design Principles
 
-- Use `randomBytes(4).toString('hex')` for unique IDs with a strategy prefix
-- Access `profile.name`, `profile.category`, `profile.competitors`, `profile.keywords` for template data
-- Set meaningful `category` and `intent` values — these are used in analysis grouping
-- The `metadata` field can store strategy-specific context (e.g., which persona, which competitor)
+- **Brand-blind**: Queries never mention the target brand — the goal is to measure organic recommendations
+- **Short and natural**: 5-12 words, conversational tone — what real people actually type into ChatGPT
+- **No keyword stuffing**: Avoid stacking adjectives and nouns ("affordable enterprise CRM solutions")
+- **Purchase-oriented**: Queries should lead to product recommendations, not abstract discussions

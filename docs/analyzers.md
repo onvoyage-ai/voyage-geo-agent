@@ -4,65 +4,55 @@ Analyzers process query results to extract specific metrics about brand visibili
 
 ## 1. Create the Analyzer
 
-Create `src/stages/analysis/analyzers/<name>.ts`:
+Create `src/voyage_geo/stages/analysis/analyzers/<name>.py`:
 
-```typescript
-import type { Analyzer } from './types.js';
-import type { QueryResult } from '../../../types/result.js';
-import type { BrandProfile } from '../../../types/brand.js';
+```python
+"""My Analyzer — measures something about brand visibility."""
 
-export interface MyAnalysisScore {
-  // Define your output shape
-  overall: number;
-  byProvider: Record<string, number>;
-}
+from __future__ import annotations
 
-export class MyAnalyzer implements Analyzer {
-  name = 'my-analyzer';
+from voyage_geo.types.brand import BrandProfile
+from voyage_geo.types.result import QueryResult
 
-  analyze(results: QueryResult[], profile: BrandProfile): MyAnalysisScore {
-    const validResults = results.filter((r) => !r.error && r.response);
 
-    // Your analysis logic here
-    // Use helpers from utils/text.ts and statistics.ts
+class MyAnalyzer:
+    name = "my-analyzer"
 
-    return {
-      overall: 0,
-      byProvider: {},
-    };
-  }
-}
+    def analyze(
+        self,
+        results: list[QueryResult],
+        profile: BrandProfile,
+        **kwargs,
+    ) -> dict:
+        valid = [r for r in results if not r.error and r.response]
+
+        # Your analysis logic here
+        return {
+            "overall": 0,
+            "by_provider": {},
+        }
 ```
 
 ## 2. Register the Analyzer
 
-In `src/stages/analysis/stage.ts`, add to `ANALYZER_MAP`:
+In `src/voyage_geo/stages/analysis/stage.py`, add to `ANALYZER_MAP`:
 
-```typescript
-import { MyAnalyzer } from './analyzers/my-analyzer.js';
+```python
+from voyage_geo.stages.analysis.analyzers.my_analyzer import MyAnalyzer
 
-const ANALYZER_MAP: Record<string, () => Analyzer> = {
-  // ... existing analyzers
-  'my-analyzer': () => new MyAnalyzer(),
-};
+ANALYZER_MAP: dict[str, type] = {
+    # ... existing analyzers
+    "my-analyzer": MyAnalyzer,
+}
 ```
 
 ## 3. Add to Config Schema
 
-In `src/config/schema.ts`, add to the analyzers enum:
-
-```typescript
-export const analysisConfigSchema = z.object({
-  analyzers: z.array(z.enum([
-    // ... existing analyzers
-    'my-analyzer',
-  ])),
-});
-```
+In `src/voyage_geo/config/schema.py`, add to the analyzers list in the default config.
 
 ## 4. Add Result Type
 
-If your analyzer produces a new data shape, add it to `src/types/analysis.ts` and update `AnalysisResult`.
+If your analyzer produces a new data shape, add it to `src/voyage_geo/types/analysis.py` and update `AnalysisResult`.
 
 ## Built-in Analyzers
 
@@ -72,13 +62,14 @@ If your analyzer produces a new data shape, add it to `src/types/analysis.ts` an
 | `mention-rate` | How often the brand is mentioned in responses |
 | `sentiment` | Positive/negative/neutral sentiment of brand mentions |
 | `positioning` | How AI models describe and position the brand |
-| `citation` | What URLs/sources AI models cite |
 | `competitor` | Comparison of brand metrics against competitors |
+| `narrative` | What themes AI models associate with the brand, USP coverage gaps |
 
 ## Useful Utilities
 
-- `containsBrand(text, brand)` — check if text mentions brand
-- `extractSentences(text)` — split text into sentences
-- `countOccurrences(text, term)` — count term occurrences
-- `groupBy(items, keyFn)` — group items
-- `mean(values)` / `percentage(part, total)` — statistics
+From `src/voyage_geo/utils/text.py`:
+- `contains_brand(text, brand)` — check if text mentions brand
+- `extract_sentences(text)` — split text into sentences
+- `count_occurrences(text, term)` — count term occurrences
+- `extract_competitors_with_llm(text, provider)` — LLM-based competitor extraction
+- `extract_narratives_with_llm(text, provider)` — LLM-based claim extraction
