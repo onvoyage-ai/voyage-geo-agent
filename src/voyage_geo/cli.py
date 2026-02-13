@@ -35,6 +35,8 @@ def run(
     output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
     processing_provider: str | None = typer.Option(None, "--processing-provider", help="Provider for non-execution LLM calls (default: anthropic)"),
     processing_model: str | None = typer.Option(None, "--processing-model", help="Model for non-execution LLM calls (default: claude-opus-4-6)"),
+    interactive: bool = typer.Option(True, "--interactive/--no-interactive", help="Interactive review checkpoints after research & query generation"),
+    resume: str | None = typer.Option(None, "--resume", "-r", help="Resume from an existing run ID (skips research, reuses brand profile)"),
 ) -> None:
     """Run full GEO analysis pipeline."""
     from voyage_geo.config.loader import load_config
@@ -78,7 +80,18 @@ def run(
 
     from voyage_geo.core.engine import VoyageGeoEngine
 
-    engine = VoyageGeoEngine(config)
+    # Validate resume run exists
+    if resume:
+        from voyage_geo.storage.filesystem import FileSystemStorage
+        _storage = FileSystemStorage(output_dir)
+        if not _storage.run_dir(resume).exists():
+            console.print(f"[red]Run not found:[/red] {resume}")
+            available = _storage.list_runs()
+            if available:
+                console.print(f"Available runs: {', '.join(available[:5])}")
+            raise typer.Exit(1)
+
+    engine = VoyageGeoEngine(config, interactive=interactive, resume_run_id=resume)
     result = asyncio.run(engine.run())
 
     if result.analysis_result:

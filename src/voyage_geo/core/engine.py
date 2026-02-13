@@ -21,8 +21,16 @@ logger = structlog.get_logger()
 
 
 class VoyageGeoEngine:
-    def __init__(self, config: VoyageGeoConfig) -> None:
+    def __init__(
+        self,
+        config: VoyageGeoConfig,
+        *,
+        interactive: bool = True,
+        resume_run_id: str | None = None,
+    ) -> None:
         self.config = config
+        self.interactive = interactive
+        self.resume_run_id = resume_run_id
         self.storage = FileSystemStorage(config.output_dir)
         self.provider_registry = ProviderRegistry()
         self.pipeline = Pipeline()
@@ -30,6 +38,7 @@ class VoyageGeoEngine:
         self._register_providers()
         self._processing_provider = self._create_processing_provider()
         self._build_pipeline()
+        self._register_hooks()
 
     def _register_providers(self) -> None:
         for name, pconfig in self.config.providers.items():
@@ -63,9 +72,39 @@ class VoyageGeoEngine:
         self.pipeline.add_stage(AnalysisStage(self.storage, self._processing_provider))
         self.pipeline.add_stage(ReportingStage(self.storage))
 
+    def _register_hooks(self) -> None:
+        if self.interactive:
+            from voyage_geo.utils.interactive import review_brand_profile, review_queries
+
+            self.pipeline.add_hook("research", review_brand_profile)
+            self.pipeline.add_hook("query_generation", review_queries)
+
+    async def _load_resume_context(self, ctx: RunContext) -> RunContext:
+        """Load existing data from a previous run into the context."""
+        run_id = self.resume_run_id
+        assert run_id is not None
+
+        from voyage_geo.types.brand import BrandProfile
+
+        profile_data = await self.storage.load_json(run_id, "brand-profile.json")
+        if profile_data:
+            ctx.brand_profile = BrandProfile(**profile_data)
+            logger.info("engine.resume.loaded_profile", run_id=run_id)
+        else:
+            logger.warning("engine.resume.no_profile", run_id=run_id)
+
+        return ctx
+
     async def run(self) -> RunContext:
-        ctx = create_run_context(self.config)
-        logger.info("engine.start", run_id=ctx.run_id, brand=self.config.brand)
+        if self.resume_run_id:
+            # Reuse the existing run directory
+            ctx = create_run_context(self.config)
+            ctx.run_id = self.resume_run_id
+            ctx = await self._load_resume_context(ctx)
+            logger.info("engine.resume", run_id=ctx.run_id, brand=self.config.brand)
+        else:
+            ctx = create_run_context(self.config)
+            logger.info("engine.start", run_id=ctx.run_id, brand=self.config.brand)
 
         await self.storage.create_run_dir(ctx.run_id)
         await self.storage.save_metadata(ctx.run_id, {
