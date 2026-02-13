@@ -30,22 +30,28 @@ INTENT TYPES to distribute across:
 5. TRANSACTIONAL — ready to act ("X near me", "book X", "X pricing", "X free trial")
 6. COMPARATIVE — weighing options ("X vs Y", "which X is best for", "pros and cons of X")
 
-EXAMPLES of realistic intent-driven queries (for "cloud storage"):
+GOOD EXAMPLES (for "cloud storage"):
 - is cloud storage safe for sensitive documents | general | trust
-- best cloud storage for photographers {YEAR} | best-of | commercial
-- how to choose between cloud storage providers | how-to | comparative
-- cheap cloud storage with good security | recommendation | commercial
-- what happens if a cloud storage company shuts down | general | trust
-- cloud storage pricing comparison | comparison | transactional
+- best cloud storage for photographers | best-of | commercial
+- how do i pick a cloud storage provider | how-to | comparative
+- what's the cheapest cloud storage that's actually good | recommendation | commercial
+- can i trust cloud storage with my business files | general | trust
+- how much does cloud storage usually cost | general | transactional
+
+BAD EXAMPLES — do NOT generate these:
+- "cloud storage solutions reviews and user experiences" ← keyword stuffing, not a question
+- "secure reliable cloud storage platform comparison" ← noun phrase, not natural speech
 
 YOUR QUERIES MUST BE:
-- SHORT: 5-15 words max
-- NATURAL: typed by a real person into ChatGPT or Perplexity
+- SHORT: 5-12 words
+- CONVERSATIONAL: sounds like something you'd actually say to ChatGPT. Questions and requests, not keyword strings.
 - Each intent should lead the AI to potentially recommend specific products/brands
 
 RULES:
 - NEVER include any brand or company name
+- NO keyword stuffing — don't stack adjectives and nouns together
 - NO long stories or multi-sentence queries
+- Queries should be QUESTIONS or REQUESTS, not noun phrases
 - Each query on its own line:
 
 <query text> | <category> | <intent>

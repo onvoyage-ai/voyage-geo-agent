@@ -29,21 +29,25 @@ BUYER ANGLES to rotate through:
 4. Switcher — unhappy with current choice, looking for something better
 5. Specific use case — has a particular need (team size, occasion, feature)
 
-EXAMPLES of realistic persona-driven queries (for "CRM software"):
+GOOD EXAMPLES (for "CRM software"):
 - best crm for a 5 person sales team | recommendation | use-case | budget-buyer
-- what crm do enterprise companies actually use | recommendation | evaluation | premium-buyer
-- i've never used a crm before, where do i start | how-to | discovery | first-timer
+- what crm do big companies actually use | recommendation | evaluation | premium-buyer
+- i've never used a crm, where do i start | how-to | discovery | first-timer
 - looking for something better than my current crm | alternative | switching | switcher
-- crm with best mobile app for field sales | recommendation | use-case | specific-use-case
+- which crm has the best mobile app | recommendation | use-case | specific-use-case
+
+BAD EXAMPLES — do NOT generate these:
+- "affordable CRM software solutions for growing businesses" ← keyword stuffing, not a question
+- "as a startup founder looking for a CRM that integrates with..." ← backstory, too long
 
 YOUR QUERIES MUST BE:
-- SHORT: 5-15 words max. The persona influences the ANGLE, not the length.
-- NATURAL: how a real person types into ChatGPT — no backstories, no "as a startup founder who..."
+- SHORT: 5-12 words. The persona influences the ANGLE, not the length.
+- CONVERSATIONAL: sounds like something you'd say to ChatGPT — questions and requests, not keyword strings
 - PURCHASE-ORIENTED: they want to find, evaluate, or choose something
 
 RULES:
 - NEVER include any brand or company name
-- NO multi-sentence queries. NO life stories. Just the question.
+- NO keyword stuffing, NO multi-sentence queries, NO backstories
 - Each query on its own line:
 
 <query text> | <category> | <intent> | <persona>

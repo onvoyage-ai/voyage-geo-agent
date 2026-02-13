@@ -74,17 +74,21 @@ This generates the simulated search queries and saves them to `data/runs/<run-id
 
 ## Step 6: Review Queries with User
 
-Read `data/runs/<run-id>/queries.json` and present them in a table:
+Read `data/runs/<run-id>/queries.json` and present them in a titled markdown table called **"Simulated Search Queries"**:
+
+### Simulated Search Queries
 
 | # | Strategy | Category | Query |
 |---|----------|----------|-------|
 | 1 | keyword | best-of | best wagyu restaurant in los angeles |
-| 2 | competitor | alternative | yazawa alternatives 2026 |
+| 2 | keyword | recommendation | recommend a high end japanese bbq spot |
+| 3 | persona | how-to | where should i eat wagyu for a special occasion |
+| 4 | intent | general | is yakiniku worth the price |
 | ... | ... | ... | ... |
 
-Show the total count and breakdown by strategy.
+> **20 queries** — 7 keyword · 7 persona · 6 intent
 
-Ask: **"These are the queries I'll send to all AI models. Look good? Want me to remove or change any before I run?"**
+Then ask: **"These are the queries I'll send to all AI models. Look good? Want me to remove or change any before I run?"**
 
 If the user wants changes, edit `queries.json` directly (remove entries, adjust query text, update `total_count`).
 

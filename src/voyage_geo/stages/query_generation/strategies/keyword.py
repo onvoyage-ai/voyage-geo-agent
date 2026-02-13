@@ -21,23 +21,30 @@ CONTEXT:
 - Keywords: {", ".join(profile.keywords[:6]) or profile.category}
 - Year: {YEAR}
 
-EXAMPLES of realistic queries (for a "project management tool"):
+GOOD EXAMPLES (for a "project management tool"):
 - best project management tool for small teams
-- project management software with good free tier
-- what do companies use to track projects in 2026
-- affordable alternative to expensive PM tools
-- simple task management app for remote teams
+- what do companies use to track projects
+- is there a free alternative to expensive PM software
+- recommend a simple task app for remote teams
+- what should i look for in project management software
+
+BAD EXAMPLES — do NOT generate queries like these:
+- "project management tool reviews and user experiences" ← keyword stuffing, not a real question
+- "best affordable project management software solutions for teams" ← too many adjectives crammed together
+- "comprehensive project management platform with collaboration features" ← sounds like ad copy
 
 YOUR QUERIES MUST BE:
-- SHORT: 5-15 words max. Real people don't write paragraphs.
-- NATURAL: exactly how someone would type into a chatbot — lowercase, casual
-- PURCHASE-ORIENTED: the person is looking to discover, evaluate, or buy something in this category
-- VARIED: mix "best X", "X for [use case]", "how to choose X", "X recommendations", pricing questions
+- SHORT: 5-12 words. Real people don't write long queries.
+- CONVERSATIONAL: written as a question or casual request, not a keyword string. If it doesn't sound like something you'd say out loud, it's wrong.
+- PURCHASE-ORIENTED: the person is looking to discover, evaluate, or buy something
+- VARIED: mix "best X", "X for [use case]", "how to choose X", "recommend me X", pricing questions
 
 RULES:
 - NEVER include any brand or company name
-- NO backstories, no "my wife and I", no multi-sentence queries
+- NO keyword stuffing — don't cram multiple descriptors together ("personalized adaptive learning platform reviews")
+- NO backstories, no multi-sentence queries
 - NO quotation marks around the query text
+- Queries should be QUESTIONS or REQUESTS, not noun phrases
 - Each query on its own line in this format:
 
 <query text> | <category> | <intent>
