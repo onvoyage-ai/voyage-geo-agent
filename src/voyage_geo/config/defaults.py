@@ -5,7 +5,7 @@ from voyage_geo.config.schema import ProviderConfig
 DEFAULT_PROVIDERS: dict[str, ProviderConfig] = {
     "openai": ProviderConfig(
         name="openai",
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         max_tokens=512,
         temperature=0.7,
     ),
@@ -17,13 +17,13 @@ DEFAULT_PROVIDERS: dict[str, ProviderConfig] = {
     ),
     "google": ProviderConfig(
         name="google",
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash",
         max_tokens=512,
         temperature=0.7,
     ),
     "perplexity": ProviderConfig(
         name="perplexity",
-        model="sonar",
+        model="sonar-pro",
         max_tokens=512,
         temperature=0.7,
         base_url="https://api.perplexity.ai",

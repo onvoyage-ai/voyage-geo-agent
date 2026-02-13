@@ -12,13 +12,13 @@ from voyage_geo.providers.base import BaseProvider, ProviderResponse
 
 # CLI name → (OpenRouter model ID, display name)
 OPENROUTER_MODELS: dict[str, tuple[str, str]] = {
-    "chatgpt": ("openai/gpt-4o-mini", "ChatGPT"),
-    "gemini": ("google/gemini-2.0-flash-001", "Gemini"),
-    "claude": ("anthropic/claude-sonnet-4", "Claude"),
+    "chatgpt": ("openai/gpt-5-mini", "ChatGPT"),
+    "gemini": ("google/gemini-2.5-flash", "Gemini"),
+    "claude": ("anthropic/claude-sonnet-4-5-20250929", "Claude"),
     "perplexity-or": ("perplexity/sonar-pro", "Perplexity"),
-    "deepseek": ("deepseek/deepseek-chat", "DeepSeek"),
-    "grok": ("x-ai/grok-3", "Grok"),
-    "llama": ("meta-llama/llama-3.3-70b-instruct", "Llama"),
+    "deepseek": ("deepseek/deepseek-v3.2", "DeepSeek"),
+    "grok": ("x-ai/grok-4-1-fast-non-reasoning", "Grok"),
+    "llama": ("meta-llama/llama-4-maverick-17b-128e-instruct", "Llama"),
 }
 
 
@@ -35,7 +35,7 @@ class OpenRouterProvider(BaseProvider):
             self.display_name = display  # type: ignore[assignment]
             self._model_id = model_id
         else:
-            self._model_id = config.model or "openai/gpt-4o-mini"
+            self._model_id = config.model or "openai/gpt-5-mini"
 
         self.client = AsyncOpenAI(
             api_key=config.api_key,

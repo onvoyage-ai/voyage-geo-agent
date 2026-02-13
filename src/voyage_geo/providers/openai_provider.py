@@ -20,7 +20,7 @@ class OpenAIProvider(BaseProvider):
         self.client = AsyncOpenAI(api_key=config.api_key)
 
     async def query(self, prompt: str) -> ProviderResponse:
-        model = self.config.model or "gpt-4o-mini"
+        model = self.config.model or "gpt-5-mini"
         start = time.perf_counter()
         try:
             response = await self.client.chat.completions.create(

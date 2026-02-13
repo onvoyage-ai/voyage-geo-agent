@@ -23,7 +23,7 @@ class PerplexityProvider(BaseProvider):
         )
 
     async def query(self, prompt: str) -> ProviderResponse:
-        model = self.config.model or "sonar"
+        model = self.config.model or "sonar-pro"
         start = time.perf_counter()
         try:
             response = await self.client.chat.completions.create(

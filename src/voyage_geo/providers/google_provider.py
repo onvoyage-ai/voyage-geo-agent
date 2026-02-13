@@ -21,7 +21,7 @@ class GoogleProvider(BaseProvider):
         self.client = genai.Client(api_key=config.api_key)
 
     async def query(self, prompt: str) -> ProviderResponse:
-        model = self.config.model or "gemini-2.0-flash"
+        model = self.config.model or "gemini-2.5-flash"
         start = time.perf_counter()
         try:
             response = await self.client.aio.models.generate_content(
