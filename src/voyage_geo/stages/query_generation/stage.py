@@ -9,7 +9,6 @@ import structlog
 from voyage_geo.core.context import RunContext
 from voyage_geo.core.pipeline import PipelineStage
 from voyage_geo.providers.base import BaseProvider
-from voyage_geo.providers.registry import ProviderRegistry
 from voyage_geo.stages.query_generation.strategies import competitor, intent, keyword, persona
 from voyage_geo.storage.filesystem import FileSystemStorage
 from voyage_geo.types.query import GeneratedQuery, QuerySet
@@ -29,8 +28,8 @@ class QueryGenerationStage(PipelineStage):
     name = "query-generation"
     description = "Generate search queries with AI"
 
-    def __init__(self, provider_registry: ProviderRegistry, storage: FileSystemStorage) -> None:
-        self.provider_registry = provider_registry
+    def __init__(self, processing_provider: BaseProvider, storage: FileSystemStorage) -> None:
+        self.processing_provider = processing_provider
         self.storage = storage
 
     async def execute(self, ctx: RunContext) -> RunContext:
@@ -45,8 +44,7 @@ class QueryGenerationStage(PipelineStage):
         total_count = query_config.count
         per_strategy = -(-total_count // len(strategies_enabled))  # ceil div
 
-        generator = self._pick_provider()
-        console.print(f"  Generating queries via [bold]{generator.display_name}[/bold]...")
+        console.print(f"  Generating queries via [bold]{self.processing_provider.display_name}[/bold]...")
 
         all_queries: list[GeneratedQuery] = []
 
@@ -57,7 +55,7 @@ class QueryGenerationStage(PipelineStage):
                 continue
 
             console.print(f"  [dim]→ {strategy_name} strategy ({per_strategy} queries)...[/dim]")
-            queries = await fn(profile, per_strategy, generator)
+            queries = await fn(profile, per_strategy, self.processing_provider)
             all_queries.extend(queries)
 
         trimmed = all_queries[:total_count]
@@ -77,13 +75,3 @@ class QueryGenerationStage(PipelineStage):
         ctx.query_set = query_set
         return ctx
 
-    def _pick_provider(self) -> BaseProvider:
-        enabled = self.provider_registry.get_enabled()
-        if not enabled:
-            raise RuntimeError("No providers available for query generation")
-        preferred = ["openai", "anthropic", "google", "perplexity"]
-        for name in preferred:
-            match = next((p for p in enabled if p.name == name), None)
-            if match:
-                return match
-        return enabled[0]

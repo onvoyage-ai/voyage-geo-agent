@@ -47,6 +47,16 @@ class AnalysisConfig(BaseModel):
     )
 
 
+class ProcessingConfig(BaseModel):
+    """Config for the dedicated processing model used in non-execution LLM calls."""
+
+    provider: str = "anthropic"
+    model: str = "claude-opus-4-6"
+    api_key: str | None = None
+    max_tokens: int = 4096
+    temperature: float = 0.7
+
+
 class ReportConfig(BaseModel):
     formats: list[Literal["html", "json", "csv", "markdown"]] = Field(default=["html", "json"])
     include_charts: bool = True
@@ -58,6 +68,7 @@ class VoyageGeoConfig(BaseModel):
     website: str | None = None
     competitors: list[str] = []
     providers: dict[str, ProviderConfig] = {}
+    processing: ProcessingConfig = ProcessingConfig()
     execution: ExecutionConfig = ExecutionConfig()
     queries: QueryConfig = QueryConfig()
     analysis: AnalysisConfig = AnalysisConfig()

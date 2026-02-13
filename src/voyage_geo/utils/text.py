@@ -114,11 +114,12 @@ async def extract_narratives_with_llm(
     """Extract structured brand claims from AI responses using an LLM.
 
     Returns a list of dicts with keys: brand, attribute, sentiment, claim.
+    Retries once with a smaller output constraint if JSON parsing fails.
     """
     combined = "\n---\n".join(responses)
     combined = truncate(combined, 15000)
 
-    prompt = f"""Analyze the following AI responses about the "{category}" industry.
+    base_prompt = f"""Analyze the following AI responses about the "{category}" industry.
 For every brand or company mentioned, extract each specific claim being made about it.
 
 Return a JSON array of objects with these fields:
@@ -139,36 +140,50 @@ AI RESPONSES:
 
 JSON array of claims:"""
 
-    try:
-        resp = await provider.query(prompt)
-        text = resp.text.strip()
-        # Extract JSON array from response (handle markdown fences)
-        if "```" in text:
-            text = text.split("```")[1]
-            if text.startswith("json"):
-                text = text[4:]
-            text = text.strip()
-        start = text.find("[")
-        end = text.rfind("]")
-        if start != -1 and end != -1:
-            text = text[start : end + 1]
-        claims = json.loads(text)
-        if isinstance(claims, list):
-            # Validate structure
-            valid_claims = []
-            for c in claims:
-                if (
-                    isinstance(c, dict)
-                    and "brand" in c
-                    and "attribute" in c
-                    and "sentiment" in c
-                    and "claim" in c
-                ):
-                    # Normalize sentiment
-                    if c["sentiment"] not in ("positive", "negative", "neutral"):
-                        c["sentiment"] = "neutral"
-                    valid_claims.append(c)
-            return valid_claims
-    except Exception as exc:
-        logger.warning("llm_narrative_extraction_failed", target=target_brand, error=str(exc))
+    retry_suffix = "\nReturn at most 30 claims. Keep each claim summary under 10 words."
+
+    for attempt in range(2):
+        prompt = base_prompt if attempt == 0 else base_prompt + retry_suffix
+        try:
+            resp = await provider.query(prompt)
+            text = resp.text.strip()
+            # Extract JSON array from response (handle markdown fences)
+            if "```" in text:
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+                text = text.strip()
+            start = text.find("[")
+            end = text.rfind("]")
+            if start != -1 and end != -1:
+                text = text[start : end + 1]
+            claims = json.loads(text)
+            if isinstance(claims, list):
+                # Validate structure
+                valid_claims = []
+                for c in claims:
+                    if (
+                        isinstance(c, dict)
+                        and "brand" in c
+                        and "attribute" in c
+                        and "sentiment" in c
+                        and "claim" in c
+                    ):
+                        # Normalize sentiment
+                        if c["sentiment"] not in ("positive", "negative", "neutral"):
+                            c["sentiment"] = "neutral"
+                        valid_claims.append(c)
+                return valid_claims
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                "llm_narrative_json_parse_failed",
+                target=target_brand,
+                attempt=attempt + 1,
+                error=str(exc),
+            )
+            if attempt == 0:
+                continue  # retry with smaller output constraint
+        except Exception as exc:
+            logger.warning("llm_narrative_extraction_failed", target=target_brand, error=str(exc))
+            break  # non-JSON errors don't benefit from retry
     return []

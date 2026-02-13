@@ -23,7 +23,7 @@ def run(
     brand: str = typer.Option(..., "--brand", "-b", help="Brand name to analyze"),
     website: str | None = typer.Option(None, "--website", "-w", help="Brand website URL"),
     providers: str = typer.Option(
-        "openai,anthropic,google,perplexity",
+        "chatgpt,gemini,claude,perplexity-or,deepseek,grok,llama",
         "--providers",
         "-p",
         help="Comma-separated provider names",
@@ -33,11 +33,13 @@ def run(
     formats: str = typer.Option("html,json", "--formats", "-f", help="Report formats (html,json,csv,markdown)"),
     concurrency: int = typer.Option(10, "--concurrency", "-c", help="Concurrent API requests"),
     output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
+    processing_provider: str | None = typer.Option(None, "--processing-provider", help="Provider for non-execution LLM calls (default: anthropic)"),
+    processing_model: str | None = typer.Option(None, "--processing-model", help="Model for non-execution LLM calls (default: claude-opus-4-6)"),
 ) -> None:
     """Run full GEO analysis pipeline."""
     from voyage_geo.config.loader import load_config
 
-    overrides = {
+    overrides: dict = {
         "brand": brand,
         "website": website,
         "queries": {"count": queries},
@@ -45,6 +47,15 @@ def run(
         "report": {"formats": formats.split(",")},
         "output_dir": output_dir,
     }
+
+    # Apply processing model overrides
+    processing_overrides: dict = {}
+    if processing_provider:
+        processing_overrides["provider"] = processing_provider
+    if processing_model:
+        processing_overrides["model"] = processing_model
+    if processing_overrides:
+        overrides["processing"] = processing_overrides
 
     config = load_config(overrides=overrides)
 
@@ -57,7 +68,7 @@ def run(
     enabled = [n for n, p in config.providers.items() if p.enabled and p.api_key]
     if not enabled:
         console.print("[red]No providers configured with API keys.[/red]")
-        console.print("Set env vars: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, PERPLEXITY_API_KEY")
+        console.print("Set OPENROUTER_API_KEY for all models, or individual keys: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, PERPLEXITY_API_KEY")
         raise typer.Exit(1)
 
     console.print(f"\n[bold blue]Voyage GEO[/bold blue] v{__version__}")
@@ -132,23 +143,27 @@ def research(
 ) -> None:
     """Research a brand — build a profile from AI + web scraping."""
     from voyage_geo.config.loader import load_config
+    from voyage_geo.config.schema import ProviderConfig
     from voyage_geo.core.context import create_run_context
-    from voyage_geo.providers.registry import ProviderRegistry
+    from voyage_geo.providers.registry import create_provider
     from voyage_geo.stages.research.stage import ResearchStage
     from voyage_geo.storage.filesystem import FileSystemStorage
 
     config = load_config(overrides={"brand": brand, "website": website, "output_dir": output_dir})
-    enabled = [n for n, p in config.providers.items() if p.enabled and p.api_key]
-    if not enabled:
-        console.print("[red]No providers configured with API keys.[/red]")
-        console.print("Set env vars: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, PERPLEXITY_API_KEY")
+
+    # Create processing provider
+    proc = config.processing
+    if not proc.api_key:
+        console.print(f"[red]No API key found for processing provider '{proc.provider}'.[/red]")
+        console.print("Set the appropriate env var (e.g. ANTHROPIC_API_KEY) or configure processing.api_key.")
         raise typer.Exit(1)
 
+    proc_config = ProviderConfig(
+        name=proc.provider, model=proc.model, api_key=proc.api_key,
+        max_tokens=proc.max_tokens, temperature=proc.temperature,
+    )
+    proc_provider = create_provider(proc.provider, proc_config)
     storage = FileSystemStorage(config.output_dir)
-    registry = ProviderRegistry()
-    for name, pconfig in config.providers.items():
-        if pconfig.enabled and pconfig.api_key:
-            registry.register(name, pconfig)
 
     console.print(f"\n[bold blue]Voyage GEO[/bold blue] v{__version__}")
     console.print(f"Researching: [bold]{brand}[/bold]")
@@ -158,7 +173,7 @@ def research(
     async def _run():
         ctx = create_run_context(config)
         await storage.create_run_dir(ctx.run_id)
-        stage = ResearchStage(registry, storage)
+        stage = ResearchStage(proc_provider, storage)
         ctx = await stage.execute(ctx)
         return ctx
 

@@ -8,7 +8,7 @@ import structlog
 
 from voyage_geo.core.context import RunContext
 from voyage_geo.core.pipeline import PipelineStage
-from voyage_geo.providers.registry import ProviderRegistry
+from voyage_geo.providers.base import BaseProvider
 from voyage_geo.stages.analysis.analyzers.citation import CitationAnalyzer
 from voyage_geo.stages.analysis.analyzers.competitor import CompetitorAnalyzer
 from voyage_geo.stages.analysis.analyzers.mention_rate import MentionRateAnalyzer
@@ -39,9 +39,9 @@ class AnalysisStage(PipelineStage):
     name = "analysis"
     description = "Analyze AI responses"
 
-    def __init__(self, storage: FileSystemStorage, provider_registry: ProviderRegistry) -> None:
+    def __init__(self, storage: FileSystemStorage, processing_provider: BaseProvider) -> None:
         self.storage = storage
-        self.provider_registry = provider_registry
+        self.processing_provider = processing_provider
 
     async def execute(self, ctx: RunContext) -> RunContext:
         stage_header(self.name, self.description)
@@ -53,30 +53,27 @@ class AnalysisStage(PipelineStage):
         profile = ctx.brand_profile
         analyzers_enabled = ctx.config.analysis.analyzers
 
-        # Extract competitors and narratives from AI responses using LLM
+        # Extract competitors and narratives from AI responses using the processing provider
         extracted_competitors: list[str] = []
         extracted_claims: list[dict] = []
         valid_results = [r for r in results if not r.error and r.response]
         if valid_results:
-            providers = self.provider_registry.get_enabled()
-            if providers:
-                response_texts = [r.response for r in valid_results]
-                llm_provider = providers[0]
+            response_texts = [r.response for r in valid_results]
 
-                console.print("  Extracting competitors with LLM...")
-                extracted_competitors = await extract_competitors_with_llm(
-                    response_texts, profile.name, profile.category, llm_provider
+            console.print(f"  Extracting competitors via {self.processing_provider.display_name}...")
+            extracted_competitors = await extract_competitors_with_llm(
+                response_texts, profile.name, profile.category, self.processing_provider
+            )
+            if extracted_competitors:
+                console.print(f"  [green]Found competitors:[/green] {', '.join(extracted_competitors)}")
+
+            if "narrative" in analyzers_enabled:
+                console.print(f"  Extracting narratives via {self.processing_provider.display_name}...")
+                extracted_claims = await extract_narratives_with_llm(
+                    response_texts, profile.name, profile.category, self.processing_provider
                 )
-                if extracted_competitors:
-                    console.print(f"  [green]Found competitors:[/green] {', '.join(extracted_competitors)}")
-
-                if "narrative" in analyzers_enabled:
-                    console.print("  Extracting narratives with LLM...")
-                    extracted_claims = await extract_narratives_with_llm(
-                        response_texts, profile.name, profile.category, llm_provider
-                    )
-                    if extracted_claims:
-                        console.print(f"  [green]Extracted {len(extracted_claims)} claims[/green]")
+                if extracted_claims:
+                    console.print(f"  [green]Extracted {len(extracted_claims)} claims[/green]")
 
         analysis = AnalysisResult(run_id=ctx.run_id, brand=profile.name, analyzed_at=datetime.now(UTC).isoformat())
 

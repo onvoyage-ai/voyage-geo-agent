@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup
 from voyage_geo.core.context import RunContext
 from voyage_geo.core.pipeline import PipelineStage
 from voyage_geo.providers.base import BaseProvider
-from voyage_geo.providers.registry import ProviderRegistry
 from voyage_geo.storage.filesystem import FileSystemStorage
 from voyage_geo.types.brand import BrandProfile, ScrapedContent
 from voyage_geo.utils.progress import console, stage_header
@@ -40,8 +39,8 @@ class ResearchStage(PipelineStage):
     name = "research"
     description = "Research brand profile"
 
-    def __init__(self, provider_registry: ProviderRegistry, storage: FileSystemStorage) -> None:
-        self.provider_registry = provider_registry
+    def __init__(self, processing_provider: BaseProvider, storage: FileSystemStorage) -> None:
+        self.processing_provider = processing_provider
         self.storage = storage
 
     async def execute(self, ctx: RunContext) -> RunContext:
@@ -65,12 +64,10 @@ class ResearchStage(PipelineStage):
             if scraped:
                 scraped_section = f"Scraped website content:\nTitle: {scraped.title}\nDescription: {scraped.meta_description}\nHeadings: {', '.join(scraped.headings[:10])}\nContent excerpt: {scraped.body_text[:1000]}"
 
-        # Pick a provider for research
-        provider = self._pick_provider()
+        # Query the processing provider
         prompt = RESEARCH_PROMPT.format(brand=brand, website=website or "N/A", scraped_section=scraped_section)
-
-        console.print(f"  Researching [bold]{brand}[/bold] via {provider.display_name}...")
-        response = await provider.query(prompt)
+        console.print(f"  Researching [bold]{brand}[/bold] via {self.processing_provider.display_name}...")
+        response = await self.processing_provider.query(prompt)
 
         # Parse JSON response
         import json
@@ -106,17 +103,6 @@ class ResearchStage(PipelineStage):
 
         ctx.brand_profile = profile
         return ctx
-
-    def _pick_provider(self) -> BaseProvider:
-        enabled = self.provider_registry.get_enabled()
-        if not enabled:
-            raise RuntimeError("No providers configured for research")
-        preferred = ["openai", "anthropic", "google", "perplexity"]
-        for name in preferred:
-            match = next((p for p in enabled if p.name == name), None)
-            if match:
-                return match
-        return enabled[0]
 
     async def _scrape(self, url: str) -> ScrapedContent | None:
         try:

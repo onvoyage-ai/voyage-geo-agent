@@ -28,4 +28,46 @@ DEFAULT_PROVIDERS: dict[str, ProviderConfig] = {
         temperature=0.7,
         base_url="https://api.perplexity.ai",
     ),
+    "chatgpt": ProviderConfig(
+        name="chatgpt",
+        max_tokens=512,
+        temperature=0.7,
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "gemini": ProviderConfig(
+        name="gemini",
+        max_tokens=512,
+        temperature=0.7,
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "claude": ProviderConfig(
+        name="claude",
+        max_tokens=512,
+        temperature=0.7,
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "perplexity-or": ProviderConfig(
+        name="perplexity-or",
+        max_tokens=512,
+        temperature=0.7,
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "deepseek": ProviderConfig(
+        name="deepseek",
+        max_tokens=512,
+        temperature=0.7,
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "grok": ProviderConfig(
+        name="grok",
+        max_tokens=512,
+        temperature=0.7,
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "llama": ProviderConfig(
+        name="llama",
+        max_tokens=512,
+        temperature=0.7,
+        base_url="https://openrouter.ai/api/v1",
+    ),
 }

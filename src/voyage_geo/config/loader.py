@@ -16,6 +16,13 @@ ENV_KEY_MAP = {
     "anthropic": "ANTHROPIC_API_KEY",
     "google": "GOOGLE_API_KEY",
     "perplexity": "PERPLEXITY_API_KEY",
+    "chatgpt": "OPENROUTER_API_KEY",
+    "gemini": "OPENROUTER_API_KEY",
+    "claude": "OPENROUTER_API_KEY",
+    "perplexity-or": "OPENROUTER_API_KEY",
+    "deepseek": "OPENROUTER_API_KEY",
+    "grok": "OPENROUTER_API_KEY",
+    "llama": "OPENROUTER_API_KEY",
 }
 
 
@@ -46,7 +53,23 @@ def load_config(
     if overrides:
         _deep_merge(config_data, overrides)
 
-    return VoyageGeoConfig(**config_data)
+    config = VoyageGeoConfig(**config_data)
+
+    # Allow env var overrides for processing config
+    env_proc_provider = os.getenv("PROCESSING_PROVIDER")
+    env_proc_model = os.getenv("PROCESSING_MODEL")
+    if env_proc_provider:
+        config.processing.provider = env_proc_provider
+    if env_proc_model:
+        config.processing.model = env_proc_model
+
+    # Resolve processing provider API key from env vars (if not already set)
+    if not config.processing.api_key:
+        processing_env_key = ENV_KEY_MAP.get(config.processing.provider)
+        if processing_env_key:
+            config.processing.api_key = os.getenv(processing_env_key)
+
+    return config
 
 
 def _deep_merge(base: dict, override: dict) -> dict:

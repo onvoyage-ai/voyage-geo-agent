@@ -121,315 +121,407 @@ class ReportingStage(PipelineStage):
         if not a:
             return
 
-        # Generate plotly charts as embedded HTML
-        charts_html = self._generate_charts(a)
+        e = html_mod.escape
+        brand = e(a.brand)
+        score = a.summary.overall_score
+        sc = "#3d7a5f" if score > 60 else "#96742b" if score > 30 else "#b04848"
+        mr = a.mention_rate.overall * 100
+        ms = a.mindshare.overall * 100
+        circ = 2 * 3.14159 * 56
+        n_providers = len(a.sentiment.by_provider)
+
+        # Score grade
+        if score > 75: grade, grade_w = "Excellent", "Outstanding AI visibility"
+        elif score > 60: grade, grade_w = "Strong", "Above-average AI presence"
+        elif score > 40: grade, grade_w = "Moderate", "Room for improvement"
+        elif score > 20: grade, grade_w = "Weak", "Significant gaps in AI visibility"
+        else: grade, grade_w = "Critical", "Nearly invisible to AI models"
+
+        # Sentiment
+        sl = a.sentiment.label
+        so = a.sentiment.overall
+
+        # Findings
+        findings = "".join(f'<div class="f-item"><div class="f-dot"></div><span>{e(f)}</span></div>' for f in a.summary.key_findings)
+
+        # Metric sparklines - provider bars for mention rate
+        def make_provider_rows(data: dict[str, float], fmt: str = "pct", colors_by_label: dict | None = None) -> str:
+            if not data:
+                return ""
+            mx = max(data.values()) if data else 1
+            rows = ""
+            for p, v in sorted(data.items(), key=lambda x: -x[1]):
+                w = (v / max(mx, 0.001)) * 100 if fmt == "pct" else max((v + 1) / 2 * 100, 3)
+                val_str = f"{v*100:.0f}%" if fmt == "pct" else f"{v:.2f}"
+                bar_color = ""
+                if colors_by_label:
+                    lb = colors_by_label.get(p, "neutral")
+                    bar_color = f' style="background:var(--c-{lb})"'
+                rows += f'<div class="pv-row"><span class="pv-name">{e(p)}</span><div class="pv-bar"><div class="pv-fill"{bar_color} style="width:{w:.0f}%{bar_color}"></div></div><span class="pv-val">{val_str}</span></div>'
+            return rows
+
+        mr_rows = make_provider_rows(a.mention_rate.by_provider, "pct")
+        ms_rows = make_provider_rows(a.mindshare.by_provider, "pct")
+        sent_rows = make_provider_rows(a.sentiment.by_provider, "score", a.sentiment.by_provider_label)
+
+        # Competitor table
+        comp_html = ""
+        if a.competitor_analysis.competitors:
+            rows = ""
+            for i, c in enumerate(a.competitor_analysis.competitors):
+                is_t = c.name.lower() == a.brand.lower()
+                cls = ' class="t-hl"' if is_t else ""
+                nm = f"<strong>{e(c.name)}</strong>" if is_t else e(c.name)
+                # Mindshare bar
+                ms_w = min(c.mindshare * 100 / max(a.competitor_analysis.competitors[0].mindshare, 0.01) * 100, 100) if a.competitor_analysis.competitors[0].mindshare else 0
+                s_cls = "positive" if c.sentiment > 0.05 else "negative" if c.sentiment < -0.05 else "neutral"
+                rows += f'<tr{cls}><td class="t-rank">{i+1}</td><td class="t-name">{nm}</td><td><div class="t-bar-wrap"><div class="t-bar" style="width:{c.mention_rate*100:.0f}%"></div></div><span class="t-pct">{c.mention_rate*100:.0f}%</span></td><td><div class="t-bar-wrap"><div class="t-bar t-bar-ms" style="width:{ms_w:.0f}%"></div></div><span class="t-pct">{c.mindshare*100:.1f}%</span></td><td class="t-sent t-{s_cls}">{c.sentiment:+.2f}</td></tr>'
+            comp_html = f'<div class="sect"><h3>Competitive Landscape</h3><div class="panel"><table class="comp-tbl"><thead><tr><th></th><th>Brand</th><th>Mentions</th><th>Mindshare</th><th>Sentiment</th></tr></thead><tbody>{rows}</tbody></table></div></div>'
+
+        # Strengths / weaknesses
+        str_items = "".join(f'<div class="sw-item sw-s"><svg viewBox="0 0 20 20" fill="currentColor" class="sw-ico"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg><span>{e(s)}</span></div>' for s in a.summary.strengths)
+        wk_items = "".join(f'<div class="sw-item sw-w"><svg viewBox="0 0 20 20" fill="currentColor" class="sw-ico"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg><span>{e(w)}</span></div>' for w in a.summary.weaknesses)
+
+        # Recommendations
+        rec_items = "".join(f'<div class="rec-item"><div class="rec-num">{i+1}</div><span>{e(r)}</span></div>' for i, r in enumerate(a.summary.recommendations))
 
         html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GEO Report: {a.brand}</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 2rem; }}
-        .container {{ max-width: 1200px; margin: 0 auto; }}
-        h1 {{ font-size: 2rem; margin-bottom: 0.5rem; color: #f1f5f9; }}
-        h2 {{ font-size: 1.4rem; margin: 2rem 0 1rem; color: #94a3b8; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }}
-        .score-banner {{ background: linear-gradient(135deg, #1e3a5f, #1e293b); padding: 2rem; border-radius: 12px; margin: 1.5rem 0; display: flex; align-items: center; gap: 2rem; }}
-        .score-big {{ font-size: 3.5rem; font-weight: bold; color: #60a5fa; }}
-        .score-label {{ font-size: 1.1rem; color: #94a3b8; }}
-        .metrics {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.5rem 0; }}
-        .metric {{ background: #1e293b; padding: 1.2rem; border-radius: 8px; }}
-        .metric-value {{ font-size: 1.8rem; font-weight: bold; color: #60a5fa; }}
-        .metric-label {{ font-size: 0.85rem; color: #94a3b8; margin-top: 0.3rem; }}
-        .findings {{ list-style: none; }}
-        .findings li {{ padding: 0.5rem 0; border-bottom: 1px solid #1e293b; }}
-        .chart-container {{ background: #1e293b; border-radius: 8px; padding: 1rem; margin: 1rem 0; }}
-        table {{ width: 100%; border-collapse: collapse; margin: 1rem 0; }}
-        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #334155; }}
-        th {{ color: #94a3b8; font-weight: 600; }}
-        .positive {{ color: #4ade80; }}
-        .negative {{ color: #f87171; }}
-        .neutral {{ color: #94a3b8; }}
-        .query-group {{ background: #1e293b; border-radius: 8px; padding: 1.2rem; margin: 1rem 0; }}
-        .query-text {{ font-size: 1.05rem; font-weight: 600; color: #f1f5f9; margin-bottom: 0.75rem; }}
-        .query-badge {{ display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; font-weight: 500; vertical-align: middle; }}
-        .badge-strategy {{ background: #1e3a5f; color: #60a5fa; }}
-        .badge-category {{ background: #312e81; color: #a78bfa; }}
-        .response-block {{ margin: 0.5rem 0; }}
-        .response-block summary {{ cursor: pointer; padding: 0.5rem 0.75rem; background: #0f172a; border-radius: 6px; color: #94a3b8; font-size: 0.9rem; }}
-        .response-block summary:hover {{ color: #e2e8f0; }}
-        .response-block .provider-tag {{ color: #60a5fa; font-weight: 600; }}
-        .response-block .model-tag {{ color: #64748b; font-size: 0.8rem; margin-left: 0.5rem; }}
-        .response-content {{ padding: 0.75rem 1rem; margin-top: 0.25rem; background: #0f172a; border-radius: 0 0 6px 6px; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5; color: #cbd5e1; max-height: 400px; overflow-y: auto; }}
-    </style>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{brand} — GEO Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{{margin:0;padding:0;box-sizing:border-box}}
+:root{{
+--c-bg:#f8f8f7;--c-surface:#ffffff;--c-surface2:#f2f1ef;--c-border:#e3e1dd;--c-border2:#d4d1cc;
+--c-text:#1c1917;--c-text2:#44403c;--c-text3:#78716c;--c-text4:#a8a29e;
+--c-accent:#292524;--c-accent2:#44403c;--c-accent-dim:rgba(41,37,36,.06);
+--c-positive:#2b7a4b;--c-negative:#b33b3b;--c-neutral:#78716c;
+--c-positive-dim:rgba(43,122,75,.09);--c-negative-dim:rgba(179,59,59,.08);
+--r:10px;--r2:12px;
+}}
+body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.55;-webkit-font-smoothing:antialiased;min-height:100vh}}
+.wrap{{max-width:1100px;margin:0 auto;padding:56px 40px 80px}}
+
+/* ── Masthead ── */
+.mast{{display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:32px;border-bottom:1px solid var(--c-border);margin-bottom:48px}}
+.mast-brand{{display:flex;align-items:center;gap:14px}}
+.mast-icon{{width:36px;height:36px;background:var(--c-text);border-radius:9px;display:flex;align-items:center;justify-content:center}}
+.mast-icon svg{{width:20px;height:20px;fill:white}}
+.mast h1{{font-size:14px;font-weight:500;color:var(--c-text3);letter-spacing:-.01em}}
+.mast h1 strong{{color:var(--c-text);font-weight:700;font-size:18px;display:block;margin-top:2px;letter-spacing:-.02em}}
+.mast-meta{{text-align:right;font-size:11px;color:var(--c-text3);line-height:1.8;letter-spacing:.01em}}
+
+/* ── Hero score ── */
+.hero{{display:grid;grid-template-columns:auto 1fr;gap:56px;align-items:center;margin-bottom:48px}}
+.hero-ring{{position:relative;width:140px;height:140px}}
+.hero-ring svg{{width:140px;height:140px;transform:rotate(-90deg)}}
+.hero-ring .trk{{fill:none;stroke:var(--c-surface2);stroke-width:9}}
+.hero-ring .val{{fill:none;stroke-width:9;stroke-linecap:round}}
+.hero-center{{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}}
+.hero-score{{font-size:44px;font-weight:900;letter-spacing:-.05em;line-height:1}}
+.hero-of{{font-size:12px;color:var(--c-text3);font-weight:500;margin-top:3px;letter-spacing:.02em}}
+.hero-right h2{{font-size:26px;font-weight:800;letter-spacing:-.025em;line-height:1.25;margin-bottom:6px;color:var(--c-text)}}
+.hero-grade{{font-size:13px;font-weight:500;color:var(--c-text2);margin-bottom:24px}}
+.hero-grade em{{font-style:normal;padding:3px 10px;border-radius:5px;font-size:11px;margin-right:8px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}}
+.f-wrap{{display:flex;flex-direction:column;gap:7px}}
+.f-item{{display:flex;align-items:baseline;gap:10px;font-size:13px;color:var(--c-text2);line-height:1.5}}
+.f-dot{{width:4px;height:4px;border-radius:50%;background:var(--c-border2);flex-shrink:0;margin-top:7px}}
+
+/* ── KPI strip ── */
+.kpis{{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--c-border);border-radius:var(--r2);overflow:hidden;margin-bottom:48px;box-shadow:0 1px 3px rgba(0,0,0,.04)}}
+.kpi{{background:var(--c-surface);padding:26px 22px}}
+.kpi-val{{font-size:24px;font-weight:800;letter-spacing:-.03em;line-height:1;color:var(--c-text)}}
+.kpi-label{{font-size:10px;color:var(--c-text3);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-top:8px}}
+.kpi-sub{{font-size:11px;color:var(--c-text3);margin-top:3px;font-weight:400}}
+
+/* ── Sections ── */
+.sect{{margin-bottom:44px}}
+.sect h3{{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--c-text3);font-weight:700;margin-bottom:18px;padding-left:1px}}
+
+/* ── Panel ── */
+.panel{{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r2);overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.03)}}
+.panel-head{{padding:16px 24px;border-bottom:1px solid var(--c-border);font-size:12px;font-weight:600;color:var(--c-text2);display:flex;align-items:center;justify-content:space-between;letter-spacing:.01em}}
+.panel-body{{padding:20px 24px}}
+
+/* ── Provider bars ── */
+.pv-row{{display:flex;align-items:center;gap:12px;height:34px}}
+.pv-name{{font-size:12px;font-weight:500;color:var(--c-text2);width:90px;text-align:right;flex-shrink:0}}
+.pv-bar{{flex:1;height:5px;background:var(--c-surface2);border-radius:99px;overflow:hidden}}
+.pv-fill{{height:100%;border-radius:99px;background:var(--c-accent);transition:width .5s cubic-bezier(.4,0,.2,1)}}
+.pv-val{{font-size:12px;font-weight:700;color:var(--c-text);width:50px;text-align:right;font-variant-numeric:tabular-nums}}
+
+/* ── Grid ── */
+.g2{{display:grid;grid-template-columns:1fr 1fr;gap:20px}}
+.g3{{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}}
+
+/* ── Comp table ── */
+.comp-tbl{{width:100%;border-collapse:collapse}}
+.comp-tbl th{{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--c-text3);font-weight:600;text-align:left;padding:13px 16px;border-bottom:1px solid var(--c-border)}}
+.comp-tbl td{{padding:11px 16px;border-bottom:1px solid var(--c-surface2);font-size:13px;vertical-align:middle}}
+.comp-tbl tr:last-child td{{border:none}}
+.comp-tbl tr:hover{{background:var(--c-surface2)}}
+.t-hl{{background:var(--c-accent-dim)!important}}
+.t-hl td{{font-weight:600}}
+.t-rank{{color:var(--c-text3);font-weight:600;width:32px;font-variant-numeric:tabular-nums}}
+.t-name{{font-weight:500}}
+.t-bar-wrap{{display:inline-block;width:56px;height:4px;background:var(--c-surface2);border-radius:99px;overflow:hidden;vertical-align:middle;margin-right:8px}}
+.t-bar{{height:100%;border-radius:99px;background:var(--c-accent)}}
+.t-bar-ms{{background:var(--c-text3)}}
+.t-pct{{font-size:12px;font-weight:600;color:var(--c-text2);font-variant-numeric:tabular-nums}}
+.t-sent{{font-weight:700;font-variant-numeric:tabular-nums;font-size:12px}}
+.t-positive{{color:var(--c-positive)}}
+.t-negative{{color:var(--c-negative)}}
+.t-neutral{{color:var(--c-text3)}}
+
+/* ── Strengths / Weaknesses ── */
+.sw-item{{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--c-surface2);font-size:13px;color:var(--c-text2);line-height:1.55}}
+.sw-item:last-child{{border:none}}
+.sw-ico{{width:17px;height:17px;flex-shrink:0;margin-top:1px}}
+.sw-s .sw-ico{{color:var(--c-positive)}}
+.sw-w .sw-ico{{color:var(--c-negative)}}
+
+/* ── Recs ── */
+.rec-item{{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid var(--c-surface2);font-size:13px;color:var(--c-text2);line-height:1.6}}
+.rec-item:last-child{{border:none}}
+.rec-num{{width:24px;height:24px;border-radius:7px;background:var(--c-surface2);color:var(--c-text2);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}}
+
+/* ── Narrative ── */
+.nar-row{{display:grid;grid-template-columns:110px auto 1fr;gap:16px;padding:14px 0;border-bottom:1px solid var(--c-surface2);align-items:center}}
+.nar-row:last-child{{border:none}}
+.nar-attr{{font-size:12px;font-weight:700;color:var(--c-text);text-transform:capitalize}}
+.nar-pills{{display:flex;gap:5px;flex-wrap:wrap}}
+.nar-pill{{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.02em}}
+.nar-pill-pos{{background:var(--c-positive-dim);color:var(--c-positive)}}
+.nar-pill-neg{{background:var(--c-negative-dim);color:var(--c-negative)}}
+.nar-pill-neu{{background:var(--c-surface2);color:var(--c-text3)}}
+.nar-claims{{font-size:12px;color:var(--c-text3);line-height:1.5}}
+
+/* ── USP gaps ── */
+.usp-row{{display:grid;grid-template-columns:20px 1fr 2fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--c-surface2);align-items:center}}
+.usp-row:last-child{{border:none}}
+.usp-dot{{width:8px;height:8px;border-radius:50%}}
+.usp-ok{{background:var(--c-positive)}}
+.usp-miss{{background:var(--c-negative)}}
+.usp-name{{font-size:13px;font-weight:600;color:var(--c-text)}}
+.usp-detail{{font-size:12px;color:var(--c-text3)}}
+
+/* ── Heatmap ── */
+.heat-tbl{{width:100%;border-collapse:collapse}}
+.heat-tbl th{{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--c-text3);font-weight:600;padding:12px 10px;border-bottom:1px solid var(--c-border);text-align:center}}
+.heat-tbl th:first-child{{text-align:left;padding-left:16px}}
+.heat-tbl td{{padding:10px;text-align:center;font-size:12px;font-weight:700;border-bottom:1px solid var(--c-surface2)}}
+.heat-tbl td:first-child{{text-align:left;padding-left:16px;font-weight:500}}
+.heat-tbl tr:last-child td{{border:none}}
+.h0{{color:var(--c-text4)}}
+.h1{{color:var(--c-positive);background:rgba(61,122,95,.05)}}
+.h2{{color:var(--c-positive);background:rgba(61,122,95,.1)}}
+.h3{{color:var(--c-positive);background:rgba(61,122,95,.16)}}
+
+/* ── Excerpts ── */
+.exc{{padding:14px 18px;border-left:2px solid var(--c-border);margin-bottom:10px;border-radius:0 6px 6px 0;background:var(--c-surface2)}}
+.exc:last-child{{margin:0}}
+.exc-pos{{border-left-color:var(--c-positive)}}
+.exc-neg{{border-left-color:var(--c-negative)}}
+.exc-text{{font-size:13px;color:var(--c-text2);line-height:1.65}}
+.exc-meta{{font-size:11px;color:var(--c-text3);margin-top:6px;font-weight:500}}
+
+/* ── Queries ── */
+.qsect{{margin-top:52px;padding-top:44px;border-top:1px solid var(--c-border)}}
+.qcard{{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r2);margin-bottom:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.03)}}
+.qcard-q{{font-size:13px;font-weight:600;padding:14px 20px;border-bottom:1px solid var(--c-surface2);display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--c-text)}}
+.qbadge{{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em}}
+.qb-s{{background:var(--c-accent-dim);color:var(--c-text2)}}
+.qb-c{{background:var(--c-surface2);color:var(--c-text3)}}
+.qresp{{border-bottom:1px solid var(--c-surface2)}}
+.qresp:last-child{{border:none}}
+.qresp summary{{cursor:pointer;padding:10px 20px;font-size:12px;color:var(--c-text3);display:flex;gap:8px;align-items:baseline;transition:background .15s}}
+.qresp summary:hover{{background:var(--c-surface2)}}
+.qresp .qp{{font-weight:600;color:var(--c-text2)}}
+.qresp .qm{{color:var(--c-text3);font-size:10px}}
+.qresp .qprev{{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c-text3)}}
+.qresp-body{{padding:14px 20px 18px;font-size:12px;color:var(--c-text2);line-height:1.7;white-space:pre-wrap;max-height:420px;overflow-y:auto;background:var(--c-bg);border-top:1px solid var(--c-surface2)}}
+
+/* ── Footer ── */
+.foot{{margin-top:56px;padding-top:24px;border-top:1px solid var(--c-border);display:flex;justify-content:space-between;font-size:11px;color:var(--c-text3)}}
+
+@media(max-width:800px){{
+.wrap{{padding:32px 20px 60px}}
+.hero{{grid-template-columns:1fr;text-align:center;gap:24px}}
+.hero-ring{{margin:0 auto}}
+.kpis{{grid-template-columns:repeat(2,1fr)}}
+.kpis .kpi:last-child{{grid-column:span 2}}
+.g2,.g3{{grid-template-columns:1fr}}
+.nar-row{{grid-template-columns:1fr;gap:6px}}
+.usp-row{{grid-template-columns:20px 1fr}}
+.usp-detail{{grid-column:span 2}}
+}}
+@media print{{
+body{{background:#fff}}
+.panel{{box-shadow:none;border-color:#e0e0e0}}
+.kpis{{box-shadow:none}}
+.qsect{{page-break-before:always}}
+}}
+</style>
 </head>
 <body>
-<div class="container">
-    <h1>GEO Report: {a.brand}</h1>
-    <p style="color: #64748b;">Generated {a.analyzed_at}</p>
+<div class="wrap">
 
-    <div class="score-banner">
-        <div>
-            <div class="score-big">{a.summary.overall_score}</div>
-            <div class="score-label">Overall GEO Score</div>
-        </div>
-        <div style="flex:1;">
-            <div style="font-size:1.2rem; margin-bottom:0.5rem;">{a.summary.headline}</div>
-            <div style="color:#94a3b8;">{'  |  '.join(a.summary.key_findings[:3])}</div>
-        </div>
-    </div>
-
-    <div class="metrics">
-        <div class="metric"><div class="metric-value">{a.mention_rate.overall*100:.1f}%</div><div class="metric-label">Mention Rate</div></div>
-        <div class="metric"><div class="metric-value">{a.mindshare.overall*100:.1f}%</div><div class="metric-label">Mindshare</div></div>
-        <div class="metric"><div class="metric-value {a.sentiment.label}">{a.sentiment.label.title()}</div><div class="metric-label">Sentiment ({a.sentiment.overall:.2f})</div></div>
-        <div class="metric"><div class="metric-value">#{a.mindshare.rank}</div><div class="metric-label">Brand Rank / {a.mindshare.total_brands_detected}</div></div>
-        <div class="metric"><div class="metric-value">{a.sentiment.confidence:.0%}</div><div class="metric-label">Confidence</div></div>
-        <div class="metric"><div class="metric-value">{a.sentiment.total_sentences}</div><div class="metric-label">Sentences Analyzed</div></div>
-    </div>
-
-    {charts_html}
-
-    <h2>Strengths</h2>
-    <ul class="findings">{''.join(f"<li>✓ {s}</li>" for s in a.summary.strengths)}</ul>
-
-    <h2>Weaknesses</h2>
-    <ul class="findings">{''.join(f"<li>✗ {w}</li>" for w in a.summary.weaknesses)}</ul>
-
-    <h2>Recommendations</h2>
-    <ul class="findings">{''.join(f"<li>→ {r}</li>" for r in a.summary.recommendations)}</ul>
-
-    <h2>Sentiment by Provider</h2>
-    <table>
-        <tr><th>Provider</th><th>Score</th><th>Label</th></tr>
-        {''.join(f"<tr><td>{p}</td><td>{s:.3f}</td><td class='{a.sentiment.by_provider_label.get(p, 'neutral')}'>{a.sentiment.by_provider_label.get(p, 'neutral')}</td></tr>" for p, s in a.sentiment.by_provider.items())}
-    </table>
-
-    <h2>Competitor Rankings</h2>
-    <table>
-        <tr><th>Brand</th><th>Mention Rate</th><th>Mindshare</th><th>Sentiment</th></tr>
-        {''.join(f"<tr><td>{'<strong>' + c.name + '</strong>' if c.name == a.brand else c.name}</td><td>{c.mention_rate*100:.1f}%</td><td>{c.mindshare*100:.1f}%</td><td class='{('positive' if c.sentiment > 0.05 else 'negative' if c.sentiment < -0.05 else 'neutral')}'>{c.sentiment:.3f}</td></tr>" for c in a.competitor_analysis.competitors)}
-    </table>
-
-    {self._narrative_html(a)}
-
-    {self._excerpts_html(a)}
-
-    {self._query_results_html(ctx)}
-
+<div class="mast">
+<div class="mast-brand">
+<div class="mast-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+<h1>GEO Analysis<strong>{brand}</strong></h1>
 </div>
-</body>
-</html>"""
+<div class="mast-meta">Report ID: {e(a.run_id)}<br>{a.analyzed_at[:10]} &middot; {n_providers} AI models</div>
+</div>
+
+<div class="hero">
+<div class="hero-ring">
+<svg viewBox="0 0 140 140">
+<circle class="trk" cx="70" cy="70" r="56"/>
+<circle class="val" cx="70" cy="70" r="56" stroke="{sc}" stroke-dasharray="{circ:.0f}" stroke-dashoffset="{circ * (1 - score / 100):.0f}"/>
+</svg>
+<div class="hero-center">
+<div class="hero-score" style="color:{sc}">{score:.0f}</div>
+<div class="hero-of">/100</div>
+</div>
+</div>
+<div class="hero-right">
+<h2>{brand}</h2>
+<div class="hero-grade"><em style="background:{sc}15;color:{sc}">{grade}</em>{grade_w}</div>
+<div class="f-wrap">{findings}</div>
+</div>
+</div>
+
+<div class="kpis">
+<div class="kpi"><div class="kpi-val">{mr:.0f}%</div><div class="kpi-label">Mention Rate</div><div class="kpi-sub">{a.mention_rate.total_mentions} / {a.mention_rate.total_responses} responses</div></div>
+<div class="kpi"><div class="kpi-val">{ms:.1f}%</div><div class="kpi-label">Mindshare</div><div class="kpi-sub">Rank #{a.mindshare.rank} of {a.mindshare.total_brands_detected}</div></div>
+<div class="kpi"><div class="kpi-val" style="color:var(--c-{sl})">{sl.title()}</div><div class="kpi-label">Sentiment</div><div class="kpi-sub">Score: {so:.2f}</div></div>
+<div class="kpi"><div class="kpi-val">{a.sentiment.confidence:.0%}</div><div class="kpi-label">Confidence</div><div class="kpi-sub">{a.sentiment.total_sentences} sentences</div></div>
+<div class="kpi"><div class="kpi-val">{a.sentiment.positive_count}<span style="color:var(--c-text4);font-size:14px;font-weight:500"> / {a.sentiment.negative_count}</span></div><div class="kpi-label">Positive / Negative</div><div class="kpi-sub">{a.sentiment.neutral_count} neutral</div></div>
+</div>
+
+<div class="sect"><h3>Provider Performance</h3>
+<div class="g3">
+<div class="panel"><div class="panel-head">Mention Rate</div><div class="panel-body">{mr_rows}</div></div>
+<div class="panel"><div class="panel-head">Mindshare</div><div class="panel-body">{ms_rows}</div></div>
+<div class="panel"><div class="panel-head">Sentiment</div><div class="panel-body">{sent_rows}</div></div>
+</div></div>
+
+{comp_html}
+
+<div class="sect"><h3>Assessment</h3>
+<div class="g2">
+<div class="panel"><div class="panel-head">Strengths</div><div class="panel-body">{str_items}</div></div>
+<div class="panel"><div class="panel-head">Weaknesses</div><div class="panel-body">{wk_items}</div></div>
+</div></div>
+
+<div class="sect"><h3>Recommendations</h3>
+<div class="panel"><div class="panel-body">{rec_items}</div></div></div>
+
+{self._narrative_html(a)}
+{self._excerpts_html(a)}
+{self._query_results_html(ctx)}
+
+<div class="foot"><span>Generated by Voyage GEO</span><span>{a.analyzed_at[:10]}</span></div>
+</div>
+</body></html>"""
 
         path = run_dir / "reports" / "report.html"
         path.write_text(html)
+
+    def _competitor_html(self, a, comp_rows: str) -> str:
+        return ""  # Now built inline in _render_html
 
     def _narrative_html(self, a) -> str:
         n = a.narrative
         if not n.claims:
             return ""
-
+        e = html_mod.escape
         parts = []
 
-        # Section 1: What AI Says About {brand}
         if n.brand_themes:
-            parts.append(f"<h2>What AI Says About {html_mod.escape(a.brand)}</h2>")
-            parts.append("<table><tr><th>Theme</th><th>Sentiment</th><th>Sample Claims</th></tr>")
+            rows = ""
             for attr, claims in n.brand_themes.items():
                 pos = sum(1 for c in claims if c.sentiment == "positive")
                 neg = sum(1 for c in claims if c.sentiment == "negative")
                 neu = sum(1 for c in claims if c.sentiment == "neutral")
-                sentiment_summary = []
-                if pos:
-                    sentiment_summary.append(f"<span class='positive'>{pos} positive</span>")
-                if neg:
-                    sentiment_summary.append(f"<span class='negative'>{neg} negative</span>")
-                if neu:
-                    sentiment_summary.append(f"<span class='neutral'>{neu} neutral</span>")
-                sample = "; ".join(html_mod.escape(c.claim) for c in claims[:3])
-                parts.append(
-                    f"<tr><td><strong>{html_mod.escape(attr)}</strong></td>"
-                    f"<td>{', '.join(sentiment_summary)}</td>"
-                    f"<td>{sample}</td></tr>"
-                )
-            parts.append("</table>")
+                pills = ""
+                if pos: pills += f'<span class="nar-pill nar-pill-pos">{pos} pos</span>'
+                if neg: pills += f'<span class="nar-pill nar-pill-neg">{neg} neg</span>'
+                if neu: pills += f'<span class="nar-pill nar-pill-neu">{neu} neu</span>'
+                sample = "; ".join(e(c.claim) for c in claims[:2])
+                rows += f'<div class="nar-row"><div class="nar-attr">{e(attr)}</div><div class="nar-pills">{pills}</div><div class="nar-claims">{sample}</div></div>'
+            parts.append(f'<div class="sect"><h3>AI Narrative — {e(a.brand)}</h3><div class="panel"><div class="panel-body">{rows}</div></div></div>')
 
-            # Plotly horizontal bar chart for brand themes
-            attrs = list(n.brand_themes.keys())
-            pos_counts = [sum(1 for c in n.brand_themes[a_] if c.sentiment == "positive") for a_ in attrs]
-            neg_counts = [sum(1 for c in n.brand_themes[a_] if c.sentiment == "negative") for a_ in attrs]
-            neu_counts = [sum(1 for c in n.brand_themes[a_] if c.sentiment == "neutral") for a_ in attrs]
-            parts.append("""
-    <div class="chart-container"><div id="narrative-themes-chart"></div></div>
-    <script>
-    Plotly.newPlot('narrative-themes-chart', [""")
-            parts.append(f"""{{
-        y: {attrs}, x: {pos_counts}, name: 'Positive', type: 'bar', orientation: 'h',
-        marker: {{ color: '#4ade80' }}
-    }}, {{
-        y: {attrs}, x: {neu_counts}, name: 'Neutral', type: 'bar', orientation: 'h',
-        marker: {{ color: '#94a3b8' }}
-    }}, {{
-        y: {attrs}, x: {neg_counts}, name: 'Negative', type: 'bar', orientation: 'h',
-        marker: {{ color: '#f87171' }}
-    }}], {{
-        barmode: 'stack',
-        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
-        font: {{ color: '#e2e8f0' }},
-        xaxis: {{ gridcolor: '#334155', title: 'Claims' }},
-        margin: {{t: 10, b: 40, l: 120, r: 10}},
-        height: {max(200, len(attrs) * 40 + 80)},
-        legend: {{ orientation: 'h', y: -0.2 }}
-    }}, {{responsive: true}});
-    </script>""")
-
-        # Section 2: USP Coverage Gaps
         if n.gaps:
-            parts.append("<h2>USP Coverage Gaps</h2>")
-            parts.append(f'<p style="color:#94a3b8;">Coverage: <strong>{n.coverage_score*100:.0f}%</strong> of USPs mentioned by AI models</p>')
-            parts.append("<table><tr><th>USP</th><th>Status</th><th>Detail</th></tr>")
-            for gap in n.gaps:
-                status = "<span class='positive'>Covered</span>" if gap.covered else "<span class='negative'>Missing</span>"
-                parts.append(
-                    f"<tr><td>{html_mod.escape(gap.usp)}</td>"
-                    f"<td>{status}</td>"
-                    f"<td>{html_mod.escape(gap.detail)}</td></tr>"
-                )
-            parts.append("</table>")
+            gap_rows = ""
+            for g in n.gaps:
+                cls = "usp-ok" if g.covered else "usp-miss"
+                gap_rows += f'<div class="usp-row"><div class="usp-dot {cls}"></div><div class="usp-name">{e(g.usp)}</div><div class="usp-detail">{e(g.detail)}</div></div>'
+            parts.append(f'<div class="sect"><h3>USP Coverage — {n.coverage_score*100:.0f}%</h3><div class="panel"><div class="panel-body">{gap_rows}</div></div></div>')
 
-        # Section 3: Competitive Narrative Map
         if n.competitor_themes:
-            # Collect all attributes across all competitors
             all_attrs: set[str] = set()
-            for attrs_map in n.competitor_themes.values():
-                all_attrs.update(attrs_map.keys())
-            sorted_attrs = sorted(all_attrs)
-
-            parts.append("<h2>Competitive Narrative Map</h2>")
-            parts.append("<table><tr><th>Brand</th>")
-            for attr in sorted_attrs:
-                parts.append(f"<th>{html_mod.escape(attr)}</th>")
-            parts.append("</tr>")
-            for brand, attrs_map in sorted(n.competitor_themes.items()):
-                parts.append(f"<tr><td>{html_mod.escape(brand)}</td>")
-                for attr in sorted_attrs:
-                    count = attrs_map.get(attr, 0)
-                    parts.append(f"<td>{count if count else '—'}</td>")
-                parts.append("</tr>")
-            parts.append("</table>")
+            for m in n.competitor_themes.values():
+                all_attrs.update(m.keys())
+            sa = sorted(all_attrs)
+            hdr = "".join(f"<th>{e(at)}</th>" for at in sa)
+            brows = ""
+            for brand, am in sorted(n.competitor_themes.items()):
+                is_t = brand.lower() == a.brand.lower()
+                cls = ' class="t-hl"' if is_t else ""
+                nm = f"<strong>{e(brand)}</strong>" if is_t else e(brand)
+                cells = "".join(f'<td class="h{min(am.get(at,0),3)}">{am.get(at,0) or ""}</td>' for at in sa)
+                brows += f"<tr{cls}><td>{nm}</td>{cells}</tr>"
+            parts.append(f'<div class="sect"><h3>Competitive Narrative Map</h3><div class="panel"><table class="heat-tbl"><thead><tr><th>Brand</th>{hdr}</tr></thead><tbody>{brows}</tbody></table></div></div>')
 
         return "\n".join(parts)
 
     def _generate_charts(self, a) -> str:
-        parts = []
-
-        # Mindshare pie chart
-        if a.competitor_analysis.competitors:
-            labels = [c.name for c in a.competitor_analysis.competitors]
-            values = [c.mindshare for c in a.competitor_analysis.competitors]
-            parts.append(f"""
-    <h2>Mindshare Distribution</h2>
-    <div class="chart-container"><div id="mindshare-chart"></div></div>
-    <script>
-    Plotly.newPlot('mindshare-chart', [{{
-        labels: {labels},
-        values: {values},
-        type: 'pie',
-        hole: 0.4,
-        marker: {{ colors: ['#60a5fa', '#f472b6', '#facc15', '#4ade80', '#a78bfa', '#fb923c', '#94a3b8'] }}
-    }}], {{ paper_bgcolor: 'transparent', font: {{ color: '#e2e8f0' }}, margin: {{t:10,b:10,l:10,r:10}}, height: 350 }}, {{responsive: true}});
-    </script>""")
-
-        # Sentiment by provider bar chart
-        if a.sentiment.by_provider:
-            providers = list(a.sentiment.by_provider.keys())
-            scores = list(a.sentiment.by_provider.values())
-            colors = ['#4ade80' if s > 0.05 else '#f87171' if s < -0.05 else '#94a3b8' for s in scores]
-            parts.append(f"""
-    <h2>Sentiment by Provider</h2>
-    <div class="chart-container"><div id="sentiment-chart"></div></div>
-    <script>
-    Plotly.newPlot('sentiment-chart', [{{
-        x: {providers},
-        y: {scores},
-        type: 'bar',
-        marker: {{ color: {colors} }}
-    }}], {{ paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: {{ color: '#e2e8f0' }}, yaxis: {{gridcolor: '#334155'}}, margin: {{t:10,b:40,l:50,r:10}}, height: 300 }}, {{responsive: true}});
-    </script>""")
-
-        return "\n".join(parts)
+        return ""
 
     def _excerpts_html(self, a) -> str:
-        parts = []
-        if a.sentiment.top_positive:
-            parts.append("<h2>Top Positive Mentions</h2><table><tr><th>Provider</th><th>Score</th><th>Excerpt</th></tr>")
-            for e in a.sentiment.top_positive:
-                parts.append(f"<tr><td>{e.provider}</td><td class='positive'>{e.score:.3f}</td><td>{e.text}</td></tr>")
-            parts.append("</table>")
-        if a.sentiment.top_negative:
-            parts.append("<h2>Top Negative Mentions</h2><table><tr><th>Provider</th><th>Score</th><th>Excerpt</th></tr>")
-            for e in a.sentiment.top_negative:
-                parts.append(f"<tr><td>{e.provider}</td><td class='negative'>{e.score:.3f}</td><td>{e.text}</td></tr>")
-            parts.append("</table>")
-        return "\n".join(parts)
+        e = html_mod.escape
+        has_pos = bool(a.sentiment.top_positive)
+        has_neg = bool(a.sentiment.top_negative)
+        if not has_pos and not has_neg:
+            return ""
+        pos_h = "".join(f'<div class="exc exc-pos"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta">{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_positive[:5])
+        neg_h = "".join(f'<div class="exc exc-neg"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta">{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_negative[:5])
+        left = f'<div class="panel"><div class="panel-head">Top Positive</div><div class="panel-body">{pos_h}</div></div>' if has_pos else ""
+        right = f'<div class="panel"><div class="panel-head">Top Negative</div><div class="panel-body">{neg_h}</div></div>' if has_neg else ""
+        return f'<div class="sect"><h3>Sentiment Excerpts</h3><div class="g2">{left}{right}</div></div>'
 
     def _query_results_html(self, ctx: RunContext) -> str:
         if not ctx.execution_run or not ctx.execution_run.results:
             return ""
-
-        # Build a lookup for query metadata (strategy, category)
+        e = html_mod.escape
         query_meta: dict[str, dict[str, str]] = {}
         if ctx.query_set:
             for q in ctx.query_set.queries:
                 query_meta[q.id] = {"strategy": q.strategy, "category": q.category}
-
-        # Group results by query_text (preserving order)
         grouped: dict[str, list] = defaultdict(list)
-        query_order: list[str] = []
+        order: list[str] = []
         for r in ctx.execution_run.results:
-            key = r.query_text
-            if key not in grouped:
-                query_order.append(key)
-            grouped[key].append(r)
+            if r.query_text not in grouped:
+                order.append(r.query_text)
+            grouped[r.query_text].append(r)
 
-        parts = ['<h2>Simulated Queries &amp; AI Responses</h2>']
-
-        for query_text in query_order:
-            responses = grouped[query_text]
-            first = responses[0]
-            meta = query_meta.get(first.query_id, {})
-            strategy = meta.get("strategy", "")
-            category = meta.get("category", "")
-
+        parts = [f'<div class="qsect"><div class="sect"><h3>Queries &amp; Responses ({len(order)} queries)</h3>']
+        for qt in order:
+            resps = grouped[qt]
+            meta = query_meta.get(resps[0].query_id, {})
             badges = ""
-            if strategy:
-                badges += f'<span class="query-badge badge-strategy">{html_mod.escape(strategy)}</span>'
-            if category:
-                badges += f'<span class="query-badge badge-category">{html_mod.escape(category)}</span>'
-
-            parts.append(f'<div class="query-group">')
-            parts.append(f'<div class="query-text">{html_mod.escape(query_text)}{badges}</div>')
-
-            for r in responses:
-                provider_esc = html_mod.escape(r.provider)
-                model_esc = html_mod.escape(r.model)
-                response_esc = html_mod.escape(r.response or "(no response)")
-
-                preview = html_mod.escape((r.response or "")[:200])
-                if len(r.response or "") > 200:
-                    preview += "..."
-
-                parts.append(f'<details class="response-block">')
-                parts.append(
-                    f'<summary><span class="provider-tag">{provider_esc}</span>'
-                    f'<span class="model-tag">{model_esc}</span> — {preview}</summary>'
-                )
-                parts.append(f'<div class="response-content">{response_esc}</div>')
-                parts.append('</details>')
-
-            parts.append('</div>')
-
+            if meta.get("strategy"):
+                badges += f'<span class="qbadge qb-s">{e(meta["strategy"])}</span>'
+            if meta.get("category"):
+                badges += f'<span class="qbadge qb-c">{e(meta["category"])}</span>'
+            inner = ""
+            for r in resps:
+                prev = e((r.response or "")[:100]) + ("..." if len(r.response or "") > 100 else "")
+                inner += f'<details class="qresp"><summary><span class="qp">{e(r.provider)}</span><span class="qm">{e(r.model)}</span><span class="qprev">{prev}</span></summary><div class="qresp-body">{e(r.response or "(no response)")}</div></details>'
+            parts.append(f'<div class="qcard"><div class="qcard-q">{e(qt)}{badges}</div>{inner}</div>')
+        parts.append("</div></div>")
         return "\n".join(parts)
