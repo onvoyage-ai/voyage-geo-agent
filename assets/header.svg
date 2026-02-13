@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="320" viewBox="0 0 900 320" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#141521"/>
+      <stop offset="100%" stop-color="#0c0d14"/>
+    </linearGradient>
+    <linearGradient id="tealText" x1="0" y1="0" x2="900" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5BB8AE"/>
+      <stop offset="50%" stop-color="#7ECBC0"/>
+      <stop offset="100%" stop-color="#5BB8AE"/>
+    </linearGradient>
+    <linearGradient id="tealFade" x1="0" y1="100" x2="0" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7ECBC0"/>
+      <stop offset="100%" stop-color="#4A9E95"/>
+    </linearGradient>
+    <linearGradient id="barLine" x1="0" y1="0" x2="900" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7ECBC0" stop-opacity="0"/>
+      <stop offset="20%" stop-color="#7ECBC0" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#7ECBC0" stop-opacity="0.5"/>
+      <stop offset="80%" stop-color="#7ECBC0" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#7ECBC0" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Terminal body -->
+  <rect width="900" height="320" rx="10" fill="url(#bg)"/>
+  <rect x="0.5" y="0.5" width="899" height="319" rx="10" stroke="#2a2d3e" stroke-width="1" fill="none"/>
+
+  <!-- Title bar -->
+  <rect width="900" height="36" rx="10" fill="#1a1b2d"/>
+  <rect y="10" width="900" height="26" fill="#1a1b2d"/>
+  <line x1="0" y1="36" x2="900" y2="36" stroke="#2a2d3e" stroke-width="1"/>
+
+  <!-- Traffic lights -->
+  <circle cx="22" cy="18" r="5.5" fill="#ff5f57"/>
+  <circle cx="40" cy="18" r="5.5" fill="#febc2e"/>
+  <circle cx="58" cy="18" r="5.5" fill="#28c840"/>
+
+  <!-- Title bar text -->
+  <text x="450" y="22" font-family="ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, monospace" font-size="12" fill="#4a4d64" text-anchor="middle" font-weight="500">voyage-geo</text>
+
+  <!-- Prompt -->
+  <text x="28" y="68" font-family="ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, monospace" font-size="13">
+    <tspan fill="#7ECBC0">$</tspan><tspan fill="#4a4d64"> python3 -m voyage_geo</tspan>
+  </text>
+
+  <!-- VOYAGE — large block text -->
+  <text x="450" y="145" font-family="ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, monospace" font-size="72" font-weight="900" fill="url(#tealFade)" text-anchor="middle" letter-spacing="12">VOYAGE</text>
+
+  <!-- GEO — even larger -->
+  <text x="450" y="220" font-family="ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, monospace" font-size="84" font-weight="900" fill="url(#tealText)" text-anchor="middle" letter-spacing="20">GEO</text>
+
+  <!-- Decorative line -->
+  <rect x="0" y="245" width="900" height="1" fill="url(#barLine)"/>
+
+  <!-- Tagline -->
+  <text x="450" y="275" font-family="ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, monospace" font-size="14" fill="#5a5d76" text-anchor="middle" letter-spacing="3">SEO ANALYTICS FOR AI SEARCH ENGINES</text>
+
+  <!-- Badges line -->
+  <text x="450" y="302" font-family="ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Menlo, monospace" font-size="11" fill="#3d4057" text-anchor="middle" letter-spacing="1">
+    ChatGPT  ·  Claude  ·  Gemini  ·  Perplexity  ·  DeepSeek  ·  Grok  ·  Llama
+  </text>
+
+  <!-- Blinking cursor after prompt -->
+  <rect x="248" y="57" width="7" height="14" fill="#7ECBC0" opacity="0.8">
+    <animate attributeName="opacity" values="0.8;0;0.8" dur="1.2s" repeatCount="indefinite"/>
+  </rect>
+</svg>

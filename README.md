@@ -1,8 +1,26 @@
-# Voyage GEO
+<p align="center">
+  <img src="assets/header.svg" alt="Voyage GEO" width="900"/>
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#using-with-claude-code">Claude Code</a> ·
+  <a href="#cli-reference">CLI Reference</a> ·
+  <a href="#supported-ai-models">Models</a> ·
+  <a href="./docs/">Docs</a>
+</p>
+
+<p align="center">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-7ECBC0?style=flat-square" alt="MIT License"/></a>
+  <img src="https://img.shields.io/badge/python-3.11+-7ECBC0?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
+  <img src="https://img.shields.io/badge/async-throughout-7ECBC0?style=flat-square" alt="Async"/>
+</p>
+
+---
 
 Open source **Generative Engine Optimization** (GEO) CLI tool. Analyze how AI models (ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, Llama) reference and recommend your brand.
 
-Think of it as **SEO analytics, but for AI search engines.**
+**SEO analytics, but for AI search engines.**
 
 ## How It Works
 
