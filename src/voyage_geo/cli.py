@@ -339,6 +339,41 @@ def leaderboard(
     console.print(f"  Report: [link=file://{report_path}]{report_path}[/link]")
 
 
+@app.command(name="leaderboard-report")
+def leaderboard_report(
+    run_id: str = typer.Option(..., "--run-id", "-r", help="Leaderboard run ID"),
+    formats: str = typer.Option("html,json", "--formats", "-f", help="Report formats (html,json,csv,markdown)"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
+) -> None:
+    """Regenerate leaderboard reports from an existing run."""
+    from voyage_geo.stages.reporting.leaderboard_renderer import LeaderboardRenderer
+    from voyage_geo.storage.filesystem import FileSystemStorage
+
+    storage = FileSystemStorage(output_dir)
+
+    # Check run exists
+    run_dir = storage.run_dir(run_id)
+    if not run_dir.exists():
+        console.print(f"[red]Run not found:[/red] {run_id}")
+        available = storage.list_runs()
+        if available:
+            console.print(f"Available runs: {', '.join(available[:5])}")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold blue]Voyage GEO[/bold blue] v{__version__}")
+    console.print(f"Regenerating reports for leaderboard run: [bold]{run_id}[/bold]")
+    console.print(f"Formats: {formats}\n")
+
+    fmt_list = [f.strip() for f in formats.split(",")]
+
+    async def _run():
+        renderer, lb_result, exec_run, query_set = await LeaderboardRenderer.from_disk(storage, run_id)
+        await renderer.render(run_id, lb_result, fmt_list, exec_run, query_set)
+
+    asyncio.run(_run())
+    console.print(f"\n[bold green]Reports regenerated:[/bold green] {run_dir / 'reports'}")
+
+
 @app.command()
 def runs(
     output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),

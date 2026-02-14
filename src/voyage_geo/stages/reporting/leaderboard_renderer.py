@@ -9,9 +9,9 @@ import structlog
 
 from voyage_geo.stages.reporting.stage import _provider_logo
 from voyage_geo.storage.filesystem import FileSystemStorage
+from voyage_geo.types.leaderboard import LeaderboardResult
 
 if TYPE_CHECKING:
-    from voyage_geo.types.leaderboard import LeaderboardResult
     from voyage_geo.types.query import QuerySet
     from voyage_geo.types.result import ExecutionRun
 
@@ -21,6 +21,55 @@ logger = structlog.get_logger()
 class LeaderboardRenderer:
     def __init__(self, storage: FileSystemStorage) -> None:
         self.storage = storage
+
+    @classmethod
+    async def from_disk(
+        cls, storage: FileSystemStorage, run_id: str
+    ) -> tuple[LeaderboardRenderer, LeaderboardResult, ExecutionRun | None, QuerySet | None]:
+        """Load all data needed for report rendering from disk."""
+        from voyage_geo.types.query import QuerySet as QS
+        from voyage_geo.types.result import ExecutionRun as ER
+
+        lb_data = await storage.load_json(run_id, "analysis/leaderboard.json")
+        if not lb_data:
+            raise FileNotFoundError(f"No leaderboard data found for run {run_id}")
+
+        lb_result = LeaderboardResult(**lb_data)
+
+        # Backfill summary fields for entries saved before the slim model
+        for entry in lb_result.entries:
+            if not entry.strengths and not entry.total_mentions:
+                slug = entry.brand.lower().replace(" ", "-")
+                brand_data = await storage.load_json(run_id, f"analysis/{slug}.json")
+                if brand_data:
+                    from voyage_geo.types.analysis import AnalysisResult
+                    analysis = AnalysisResult(**brand_data)
+                    entry.total_mentions = analysis.mention_rate.total_mentions
+                    entry.total_responses = analysis.mention_rate.total_responses
+                    entry.mindshare_rank = analysis.mindshare.rank
+                    entry.total_brands_detected = analysis.mindshare.total_brands_detected
+                    entry.strengths = list(analysis.summary.strengths)
+                    entry.weaknesses = list(analysis.summary.weaknesses)
+                    if analysis.sentiment.top_positive:
+                        exc = analysis.sentiment.top_positive[0]
+                        entry.top_positive_excerpt = exc.text[:200]
+                        entry.top_positive_provider = exc.provider
+                        entry.top_positive_score = exc.score
+                    if analysis.sentiment.top_negative:
+                        exc = analysis.sentiment.top_negative[0]
+                        entry.top_negative_excerpt = exc.text[:200]
+                        entry.top_negative_provider = exc.provider
+                        entry.top_negative_score = exc.score
+
+        exec_data = await storage.load_json(run_id, "results/results.json")
+        query_data = await storage.load_json(run_id, "queries.json")
+
+        return (
+            cls(storage),
+            lb_result,
+            ER(**exec_data) if exec_data else None,
+            QS(**query_data) if query_data else None,
+        )
 
     async def render(
         self,
@@ -310,32 +359,29 @@ class LeaderboardRenderer:
         # Per-brand detail cards
         detail_cards = ""
         for entry in result.entries:
-            a = entry.analysis
             score = entry.overall_score
             sc = "#3d7a5f" if score > 60 else "#96742b" if score > 30 else "#b04848"
 
             strengths = "".join(
-                f'<li>{e(s)}</li>' for s in a.summary.strengths
-            ) if a.summary.strengths else "<li>None identified</li>"
+                f'<li>{e(s)}</li>' for s in entry.strengths
+            ) if entry.strengths else "<li>None identified</li>"
             weaknesses = "".join(
-                f'<li>{e(w)}</li>' for w in a.summary.weaknesses
-            ) if a.summary.weaknesses else "<li>None identified</li>"
+                f'<li>{e(w)}</li>' for w in entry.weaknesses
+            ) if entry.weaknesses else "<li>None identified</li>"
 
             # Top positive/negative excerpts
             excerpts = ""
-            if a.sentiment.top_positive:
-                exc = a.sentiment.top_positive[0]
+            if entry.top_positive_excerpt:
                 excerpts += (
                     f'<div class="exc exc-pos"><div class="exc-text">'
-                    f'{e(exc.text[:200])}</div>'
-                    f'<div class="exc-meta">{e(exc.provider)} &middot; {exc.score:.2f}</div></div>'
+                    f'{e(entry.top_positive_excerpt)}</div>'
+                    f'<div class="exc-meta">{e(entry.top_positive_provider)} &middot; {entry.top_positive_score:.2f}</div></div>'
                 )
-            if a.sentiment.top_negative:
-                exc = a.sentiment.top_negative[0]
+            if entry.top_negative_excerpt:
                 excerpts += (
                     f'<div class="exc exc-neg"><div class="exc-text">'
-                    f'{e(exc.text[:200])}</div>'
-                    f'<div class="exc-meta">{e(exc.provider)} &middot; {exc.score:.2f}</div></div>'
+                    f'{e(entry.top_negative_excerpt)}</div>'
+                    f'<div class="exc-meta">{e(entry.top_negative_provider)} &middot; {entry.top_negative_score:.2f}</div></div>'
                 )
 
             # Build provider affinity bars — sorted by mention rate descending
@@ -380,17 +426,17 @@ class LeaderboardRenderer:
                 f'<div>'
                 f'<div class="lb-detail-label">Mention Rate</div>'
                 f'<div class="lb-detail-val">{entry.mention_rate*100:.0f}%</div>'
-                f'<div class="lb-detail-sub">{a.mention_rate.total_mentions}/{a.mention_rate.total_responses} responses</div>'
+                f'<div class="lb-detail-sub">{entry.total_mentions}/{entry.total_responses} responses</div>'
                 f'</div>'
                 f'<div>'
                 f'<div class="lb-detail-label">Mindshare</div>'
                 f'<div class="lb-detail-val">{entry.mindshare*100:.1f}%</div>'
-                f'<div class="lb-detail-sub">Rank #{a.mindshare.rank}/{a.mindshare.total_brands_detected}</div>'
+                f'<div class="lb-detail-sub">Rank #{entry.mindshare_rank}/{entry.total_brands_detected}</div>'
                 f'</div>'
                 f'<div>'
                 f'<div class="lb-detail-label">Sentiment</div>'
-                f'<div class="lb-detail-val t-{a.sentiment.label}">{a.sentiment.label.title()}</div>'
-                f'<div class="lb-detail-sub">Score: {a.sentiment.overall:.2f}</div>'
+                f'<div class="lb-detail-val t-{entry.sentiment_label}">{entry.sentiment_label.title()}</div>'
+                f'<div class="lb-detail-sub">Score: {entry.sentiment_score:.2f}</div>'
                 f'</div>'
                 f'</div>'
                 f'{affinity_html}'

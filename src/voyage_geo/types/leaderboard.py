@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from voyage_geo.types.analysis import AnalysisResult
-
 
 class LeaderboardEntry(BaseModel):
     rank: int
@@ -16,7 +14,19 @@ class LeaderboardEntry(BaseModel):
     sentiment_score: float  # -1 to +1
     sentiment_label: str  # positive/neutral/negative
     mention_rate_by_provider: dict[str, float] = {}  # for heatmap
-    analysis: AnalysisResult
+    # Summary fields (previously accessed via entry.analysis.*)
+    total_mentions: int = 0
+    total_responses: int = 0
+    mindshare_rank: int = 0
+    total_brands_detected: int = 0
+    strengths: list[str] = []
+    weaknesses: list[str] = []
+    top_positive_excerpt: str = ""
+    top_positive_provider: str = ""
+    top_positive_score: float = 0.0
+    top_negative_excerpt: str = ""
+    top_negative_provider: str = ""
+    top_negative_score: float = 0.0
 
 
 class LeaderboardResult(BaseModel):

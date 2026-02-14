@@ -10,6 +10,7 @@ Brands are NOT preset. The flow is:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
@@ -27,6 +28,7 @@ from voyage_geo.storage.filesystem import FileSystemStorage
 from voyage_geo.types.analysis import AnalysisResult
 from voyage_geo.types.brand import BrandProfile
 from voyage_geo.types.leaderboard import LeaderboardEntry, LeaderboardResult
+from voyage_geo.types.result import ExecutionRun
 from voyage_geo.utils.leaderboard_progress import (
     analysis_progress,
     brand_discovery_status,
@@ -180,6 +182,131 @@ JSON object:"""
             })
             raise
 
+    async def _analyze_single_brand(
+        self,
+        brand: str,
+        brands: list[str],
+        run_id: str,
+        industry: str,
+        category_label: str,
+        keywords: list[str],
+        results: list,
+        extracted_claims: list[dict],
+        ranked_lists_by_response: dict[str, list[str]],
+        analyzers_enabled: list[str],
+    ) -> LeaderboardEntry:
+        """Analyze a single brand in a thread (all analyzers are sync pure computation)."""
+        other_brands = [b for b in brands if b != brand]
+        brand_profile = BrandProfile(
+            name=brand,
+            industry=industry,
+            category=category_label,
+            competitors=other_brands,
+            keywords=keywords,
+        )
+
+        analysis = AnalysisResult(
+            run_id=run_id,
+            brand=brand,
+            analyzed_at=datetime.now(UTC).isoformat(),
+        )
+
+        def _sync_analyze():
+            for analyzer_name in analyzers_enabled:
+                cls = ANALYZER_MAP.get(analyzer_name)
+                if not cls:
+                    continue
+
+                analyzer_instance = cls()
+
+                if analyzer_name in ("mindshare", "competitor"):
+                    result = analyzer_instance.analyze(
+                        results, brand_profile, extracted_competitors=brands
+                    )
+                elif analyzer_name == "rank-position":
+                    result = analyzer_instance.analyze(
+                        results, brand_profile, ranked_lists_by_response=ranked_lists_by_response
+                    )
+                elif analyzer_name == "narrative":
+                    result = analyzer_instance.analyze(
+                        results, brand_profile, extracted_claims=extracted_claims
+                    )
+                else:
+                    result = analyzer_instance.analyze(results, brand_profile)
+
+                if analyzer_name == "mindshare":
+                    analysis.mindshare = result
+                elif analyzer_name == "mention-rate":
+                    analysis.mention_rate = result
+                elif analyzer_name == "sentiment":
+                    analysis.sentiment = result
+                elif analyzer_name == "positioning":
+                    analysis.positioning = result
+                elif analyzer_name == "rank-position":
+                    analysis.rank_position = result
+                elif analyzer_name == "citation":
+                    analysis.citations = result
+                elif analyzer_name == "competitor":
+                    analysis.competitor_analysis = result
+                elif analyzer_name == "narrative":
+                    analysis.narrative = result
+
+            temp_stage = AnalysisStage(self.storage, self._processing_provider)
+            analysis.summary = temp_stage._build_summary(analysis, brand_profile)
+
+        await asyncio.to_thread(_sync_analyze)
+
+        slug = brand.lower().replace(" ", "-")
+        await self.storage.save_json(run_id, f"analysis/{slug}.json", analysis)
+
+        return self._build_entry(brand, analysis)
+
+    @staticmethod
+    def _build_entry(brand: str, analysis: AnalysisResult) -> LeaderboardEntry:
+        """Build a slim LeaderboardEntry from an AnalysisResult."""
+        top_pos_excerpt = ""
+        top_pos_provider = ""
+        top_pos_score = 0.0
+        if analysis.sentiment.top_positive:
+            exc = analysis.sentiment.top_positive[0]
+            top_pos_excerpt = exc.text[:200]
+            top_pos_provider = exc.provider
+            top_pos_score = exc.score
+
+        top_neg_excerpt = ""
+        top_neg_provider = ""
+        top_neg_score = 0.0
+        if analysis.sentiment.top_negative:
+            exc = analysis.sentiment.top_negative[0]
+            top_neg_excerpt = exc.text[:200]
+            top_neg_provider = exc.provider
+            top_neg_score = exc.score
+
+        return LeaderboardEntry(
+            rank=0,
+            brand=brand,
+            overall_score=analysis.summary.overall_score,
+            mention_rate=analysis.mention_rate.overall,
+            mindshare=analysis.mindshare.overall,
+            rank_position_score=analysis.rank_position.weighted_visibility,
+            avg_rank_position=analysis.rank_position.avg_position,
+            sentiment_score=analysis.sentiment.overall,
+            sentiment_label=analysis.sentiment.label,
+            mention_rate_by_provider=dict(analysis.mention_rate.by_provider),
+            total_mentions=analysis.mention_rate.total_mentions,
+            total_responses=analysis.mention_rate.total_responses,
+            mindshare_rank=analysis.mindshare.rank,
+            total_brands_detected=analysis.mindshare.total_brands_detected,
+            strengths=list(analysis.summary.strengths),
+            weaknesses=list(analysis.summary.weaknesses),
+            top_positive_excerpt=top_pos_excerpt,
+            top_positive_provider=top_pos_provider,
+            top_positive_score=top_pos_score,
+            top_negative_excerpt=top_neg_excerpt,
+            top_negative_provider=top_neg_provider,
+            top_negative_score=top_neg_score,
+        )
+
     async def _execute(self, run_id: str, started_at: str) -> LeaderboardResult:
         from voyage_geo.types.query import QuerySet
 
@@ -258,25 +385,37 @@ JSON object:"""
                 analyzed_at=datetime.now(UTC).isoformat(),
             )
 
-        # Step 3: Execute queries against AI providers
-        query_ctx = RunContext(
-            run_id=run_id,
-            config=self.config,
-            started_at=started_at,
-            brand_profile=category_profile,
-            query_set=query_set,
-        )
+        # Step 3: Execute queries against AI providers (resume-aware)
+        existing_execution = None
+        if self.resume_run_id:
+            results_data = await self.storage.load_json(run_id, "results/results.json")
+            if results_data:
+                existing_execution = ExecutionRun(**results_data)
+                if existing_execution.results:
+                    console.print(f"  [dim]Loaded {len(existing_execution.results)} execution results from previous run[/dim]")
 
-        console.print()
-        console.print("  [bold]Executing queries against AI providers...[/bold]")
+        if existing_execution and existing_execution.results:
+            execution_run = existing_execution
+        else:
+            query_ctx = RunContext(
+                run_id=run_id,
+                config=self.config,
+                started_at=started_at,
+                brand_profile=category_profile,
+                query_set=query_set,
+            )
 
-        exec_stage = ExecutionStage(self.provider_registry, self.storage)
-        query_ctx = await exec_stage.execute(query_ctx)
+            console.print()
+            console.print("  [bold]Executing queries against AI providers...[/bold]")
 
-        if not query_ctx.execution_run:
-            raise RuntimeError("Execution failed — no results")
+            exec_stage = ExecutionStage(self.provider_registry, self.storage)
+            query_ctx = await exec_stage.execute(query_ctx)
 
-        execution_run = query_ctx.execution_run
+            if not query_ctx.execution_run:
+                raise RuntimeError("Execution failed — no results")
+
+            execution_run = query_ctx.execution_run
+
         results = execution_run.results
         valid_results = [r for r in results if not r.error and r.response]
 
@@ -285,137 +424,112 @@ JSON object:"""
 
         response_texts = [r.response for r in valid_results]
 
-        # Step 4: Extract ALL brands that AI actually mentioned
-        console.print()
-        console.print(f"  [bold]Extracting brands from AI responses...[/bold]")
-        console.print(f"  [dim]Finding every brand that AI models actually recommended[/dim]")
+        # Step 4: Extract ALL brands that AI actually mentioned (checkpoint-aware)
+        checkpoint = None
+        if self.resume_run_id:
+            checkpoint = await self.storage.load_json(run_id, "analysis/extraction-checkpoint.json")
 
-        brands = await extract_all_brands_with_llm(
-            response_texts, category_label, self._processing_provider,
-            max_brands=self.max_brands,
-            industry=industry,
-            keywords=keywords,
-            sample_queries=[q.text for q in query_set.queries[:5]],
-        )
+        if checkpoint:
+            brands = checkpoint["brands"]
+            extracted_claims = checkpoint.get("extracted_claims", [])
+            ranked_lists_by_response = checkpoint.get("ranked_lists_by_response", {})
+            console.print(f"  [dim]Loaded extraction checkpoint: {len(brands)} brands, {len(extracted_claims)} claims[/dim]")
+        else:
+            console.print()
+            console.print(f"  [bold]Extracting brands from AI responses...[/bold]")
+            console.print(f"  [dim]Finding every brand that AI models actually recommended[/dim]")
 
-        if not brands:
-            raise RuntimeError("No brands found in AI responses")
+            brands = await extract_all_brands_with_llm(
+                response_texts, category_label, self._processing_provider,
+                max_brands=self.max_brands,
+                industry=industry,
+                keywords=keywords,
+                sample_queries=[q.text for q in query_set.queries[:5]],
+            )
 
-        leaderboard_header(self.category, len(brands))
-        brand_discovery_status(brands)
+            if not brands:
+                raise RuntimeError("No brands found in AI responses")
 
-        # Extract narratives for analysis
-        extracted_claims: list[dict] = []
-        ranked_lists_by_response: dict[str, list[str]] = {}
+            leaderboard_header(self.category, len(brands))
+            brand_discovery_status(brands)
 
-        console.print(f"  Extracting rank positions via {self._processing_provider.display_name}...")
-        response_items = [
-            (f"{r.provider}:{r.query_id}:{r.iteration}", r.response)
-            for r in valid_results
-        ]
-        ranked_lists_by_response = await extract_ranked_brands_with_llm(
-            response_items,
-            category_label,
-            self._processing_provider,
-            brands,
-        )
-        ranked_covered = sum(1 for v in ranked_lists_by_response.values() if v)
-        console.print(f"  [green]Detected explicit rankings in {ranked_covered} responses[/green]")
+            # Extract narratives for analysis
+            extracted_claims: list[dict] = []
+            ranked_lists_by_response: dict[str, list[str]] = {}
 
-        console.print(f"  Extracting narratives via {self._processing_provider.display_name}...")
-        extracted_claims = await extract_narratives_with_llm(
-            response_texts, category_label, category_label, self._processing_provider
-        )
-        if extracted_claims:
-            console.print(f"  [green]Extracted {len(extracted_claims)} claims[/green]")
+            console.print(f"  Extracting rank positions via {self._processing_provider.display_name}...")
+            response_items = [
+                (f"{r.provider}:{r.query_id}:{r.iteration}", r.response)
+                for r in valid_results
+            ]
+            ranked_lists_by_response = await extract_ranked_brands_with_llm(
+                response_items,
+                category_label,
+                self._processing_provider,
+                brands,
+            )
+            ranked_covered = sum(1 for v in ranked_lists_by_response.values() if v)
+            console.print(f"  [green]Detected explicit rankings in {ranked_covered} responses[/green]")
 
-        # Step 5: Analyze each brand against the shared responses
+            console.print(f"  Extracting narratives via {self._processing_provider.display_name}...")
+            extracted_claims = await extract_narratives_with_llm(
+                response_texts, category_label, category_label, self._processing_provider
+            )
+            if extracted_claims:
+                console.print(f"  [green]Extracted {len(extracted_claims)} claims[/green]")
+
+            # Save extraction checkpoint
+            await self.storage.save_json(run_id, "analysis/extraction-checkpoint.json", {
+                "brands": brands,
+                "extracted_claims": extracted_claims,
+                "ranked_lists_by_response": ranked_lists_by_response,
+            })
+
+        # Step 5: Analyze each brand against the shared responses (parallel, resume-aware)
         console.print()
         console.print(f"  [bold]Analyzing {len(brands)} brands...[/bold]")
 
         entries: list[LeaderboardEntry] = []
         analyzers_enabled = list(self.config.analysis.analyzers)
+        to_analyze: list[str] = []
 
-        for i, brand in enumerate(brands, 1):
-            analysis_progress(brand, i, len(brands))
-
-            other_brands = [b for b in brands if b != brand]
-            brand_profile = BrandProfile(
-                name=brand,
-                industry=industry,
-                category=category_label,
-                competitors=other_brands,
-                keywords=keywords,
-            )
-
-            analysis = AnalysisResult(
-                run_id=run_id,
-                brand=brand,
-                analyzed_at=datetime.now(UTC).isoformat(),
-            )
-
-            for analyzer_name in analyzers_enabled:
-                cls = ANALYZER_MAP.get(analyzer_name)
-                if not cls:
+        for brand in brands:
+            slug = brand.lower().replace(" ", "-")
+            if self.resume_run_id:
+                cached = await self.storage.load_json(run_id, f"analysis/{slug}.json")
+                if cached:
+                    analysis = AnalysisResult(**cached)
+                    entry = self._build_entry(brand, analysis)
+                    entries.append(entry)
+                    console.print(f"  [dim]Loaded cached analysis for {brand}[/dim]")
                     continue
+            to_analyze.append(brand)
 
-                analyzer_instance = cls()
+        # Parallel analysis in batches
+        BATCH_SIZE = 8
+        analyzed_count = len(entries)
+        for batch_start in range(0, len(to_analyze), BATCH_SIZE):
+            batch = to_analyze[batch_start : batch_start + BATCH_SIZE]
+            for b in batch:
+                analyzed_count += 1
+                analysis_progress(b, analyzed_count, len(brands))
 
-                if analyzer_name in ("mindshare", "competitor"):
-                    result = analyzer_instance.analyze(
-                        results, brand_profile, extracted_competitors=brands
-                    )
-                elif analyzer_name == "rank-position":
-                    result = analyzer_instance.analyze(
-                        results, brand_profile, ranked_lists_by_response=ranked_lists_by_response
-                    )
-                elif analyzer_name == "narrative":
-                    result = analyzer_instance.analyze(
-                        results, brand_profile, extracted_claims=extracted_claims
-                    )
-                else:
-                    result = analyzer_instance.analyze(results, brand_profile)
-
-                if analyzer_name == "mindshare":
-                    analysis.mindshare = result
-                elif analyzer_name == "mention-rate":
-                    analysis.mention_rate = result
-                elif analyzer_name == "sentiment":
-                    analysis.sentiment = result
-                elif analyzer_name == "positioning":
-                    analysis.positioning = result
-                elif analyzer_name == "rank-position":
-                    analysis.rank_position = result
-                elif analyzer_name == "citation":
-                    analysis.citations = result
-                elif analyzer_name == "competitor":
-                    analysis.competitor_analysis = result
-                elif analyzer_name == "narrative":
-                    analysis.narrative = result
-
-            temp_stage = AnalysisStage(self.storage, self._processing_provider)
-            analysis.summary = temp_stage._build_summary(analysis, brand_profile)
-
-            await self.storage.save_json(
-                run_id,
-                f"analysis/{brand.lower().replace(' ', '-')}.json",
-                analysis,
-            )
-
-            entry = LeaderboardEntry(
-                rank=0,
-                brand=brand,
-                overall_score=analysis.summary.overall_score,
-                mention_rate=analysis.mention_rate.overall,
-                mindshare=analysis.mindshare.overall,
-                rank_position_score=analysis.rank_position.weighted_visibility,
-                avg_rank_position=analysis.rank_position.avg_position,
-                sentiment_score=analysis.sentiment.overall,
-                sentiment_label=analysis.sentiment.label,
-                mention_rate_by_provider=dict(analysis.mention_rate.by_provider),
-                analysis=analysis,
-            )
-            entries.append(entry)
+            batch_entries = await asyncio.gather(*[
+                self._analyze_single_brand(
+                    brand=b,
+                    brands=brands,
+                    run_id=run_id,
+                    industry=industry,
+                    category_label=category_label,
+                    keywords=keywords,
+                    results=results,
+                    extracted_claims=extracted_claims,
+                    ranked_lists_by_response=ranked_lists_by_response,
+                    analyzers_enabled=analyzers_enabled,
+                )
+                for b in batch
+            ])
+            entries.extend(batch_entries)
 
         # Step 6: Rank by score
         entries.sort(key=lambda e: e.overall_score, reverse=True)
