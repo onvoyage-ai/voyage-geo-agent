@@ -196,6 +196,104 @@ JSON array of "{category}" brand names only:"""
     return all_names[:max_brands]
 
 
+async def deduplicate_brands(
+    brands: list[str],
+    category: str,
+    provider: BaseProvider,
+) -> tuple[list[str], dict[str, str]]:
+    """Deduplicate brand list via substring matching + LLM alias resolution.
+
+    Returns (canonical_brands, alias_map) where alias_map maps
+    every original name to its canonical form.
+    """
+    if len(brands) <= 1:
+        return brands, {b: b for b in brands}
+
+    # Layer 1: Fuzzy substring dedup — group names where one contains the other
+    alias_map: dict[str, str] = {}
+    canonical_set: list[str] = []  # preserves order
+    merged: set[str] = set()
+
+    for i, name in enumerate(brands):
+        if name in merged:
+            continue
+        group = [name]
+        for j, other in enumerate(brands):
+            if j == i or other in merged:
+                continue
+            if name.lower() in other.lower() or other.lower() in name.lower():
+                group.append(other)
+        # Pick longest name as canonical (most specific / recognizable)
+        canonical = max(group, key=len)
+        for member in group:
+            alias_map[member] = canonical
+            if member != canonical:
+                merged.add(member)
+        if canonical not in merged:
+            canonical_set.append(canonical)
+            merged.add(canonical)
+
+    # Layer 2: LLM alias resolution for semantic aliases (zero lexical overlap)
+    if len(canonical_set) >= 2:
+        names_block = "\n".join(f"- {n}" for n in canonical_set)
+        prompt = f"""These are brand/company names extracted from AI responses about "{category}".
+
+Some of these may be the SAME company known by different names, abbreviations, or aliases.
+For example, "a16z crypto" and "Andreessen Horowitz" are the same firm.
+
+BRANDS:
+{names_block}
+
+Which brands are alternate names for the same company?
+Return ONLY a JSON object mapping each alias to the canonical (most recognizable) name.
+If there are no aliases, return {{}}.
+Only include pairs where you are confident they refer to the same entity.
+
+Example: {{"a16z crypto": "Andreessen Horowitz", "GS": "Goldman Sachs"}}
+
+JSON object:"""
+
+        try:
+            resp = await provider.query(prompt)
+            text = resp.text.strip()
+            if "```" in text:
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+                text = text.strip()
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1:
+                text = text[start : end + 1]
+            llm_aliases = json.loads(text)
+            if isinstance(llm_aliases, dict):
+                # Validate both alias and canonical exist in our canonical_set
+                canonical_lower_map = {c.lower(): c for c in canonical_set}
+                for alias_raw, canon_raw in llm_aliases.items():
+                    if not isinstance(alias_raw, str) or not isinstance(canon_raw, str):
+                        continue
+                    alias_match = canonical_lower_map.get(alias_raw.lower())
+                    canon_match = canonical_lower_map.get(canon_raw.lower())
+                    if alias_match and canon_match and alias_match != canon_match:
+                        # Merge: remove alias from canonical_set, update alias_map
+                        if alias_match in canonical_set:
+                            canonical_set.remove(alias_match)
+                        # Update all entries pointing to the old alias canonical
+                        for k, v in alias_map.items():
+                            if v == alias_match:
+                                alias_map[k] = canon_match
+                        alias_map[alias_match] = canon_match
+        except Exception:
+            logger.warning("llm_brand_dedup_failed", category=category)
+
+    # Ensure every original brand has an alias_map entry
+    for b in brands:
+        if b not in alias_map:
+            alias_map[b] = b
+
+    return canonical_set, alias_map
+
+
 _RANKING_SIGNAL_PATTERNS = [
     r"(?im)^\s*\d+\s*[\.\)]\s+\S+",
     r"(?im)^\s*[-*]\s+\*\*?\w+",

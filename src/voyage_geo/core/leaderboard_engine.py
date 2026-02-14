@@ -37,6 +37,7 @@ from voyage_geo.utils.leaderboard_progress import (
 )
 from voyage_geo.utils.progress import console
 from voyage_geo.utils.text import (
+    deduplicate_brands,
     extract_all_brands_with_llm,
     extract_narratives_with_llm,
     extract_ranked_brands_with_llm,
@@ -450,6 +451,14 @@ JSON object:"""
             if not brands:
                 raise RuntimeError("No brands found in AI responses")
 
+            # Deduplicate: merge substring matches + LLM alias resolution
+            raw_count = len(brands)
+            brands, alias_map = await deduplicate_brands(
+                brands, category_label, self._processing_provider
+            )
+            if len(brands) < raw_count:
+                console.print(f"  [green]Deduplicated {raw_count} → {len(brands)} unique brands[/green]")
+
             leaderboard_header(self.category, len(brands))
             brand_discovery_status(brands)
 
@@ -481,6 +490,7 @@ JSON object:"""
             # Save extraction checkpoint
             await self.storage.save_json(run_id, "analysis/extraction-checkpoint.json", {
                 "brands": brands,
+                "alias_map": alias_map,
                 "extracted_claims": extracted_claims,
                 "ranked_lists_by_response": ranked_lists_by_response,
             })
