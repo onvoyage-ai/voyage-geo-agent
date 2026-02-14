@@ -5,6 +5,7 @@ from __future__ import annotations
 import html as html_mod
 from typing import TYPE_CHECKING
 
+import mistune
 import structlog
 
 from voyage_geo.stages.reporting.stage import _provider_logo
@@ -166,6 +167,7 @@ class LeaderboardRenderer:
         query_set: QuerySet | None,
     ) -> None:
         e = html_mod.escape
+        md = mistune.create_markdown(escape=True)
 
         # Header data
         category = e(result.category)
@@ -320,9 +322,7 @@ class LeaderboardRenderer:
                     if r.error:
                         resp_body = f'<div class="resp-err">Error: {e(r.error)}</div>'
                     else:
-                        # Truncate for display, full text in expandable
-                        resp_text = r.response
-                        resp_body = f'<div class="resp-text">{e(resp_text)}</div>'
+                        resp_body = f'<div class="resp-text">{md(r.response or "")}</div>'
 
                     latency = f'{r.latency_ms:,}ms' if r.latency_ms else ""
                     model_info = e(r.model) if r.model else ""
@@ -616,7 +616,17 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 .resp-card:last-child{{border:none}}
 .resp-query{{font-size:12px;font-weight:700;color:var(--c-text);margin-bottom:6px;display:flex;align-items:center;gap:8px}}
 .resp-query .q-strat{{font-size:9px}}
-.resp-text{{font-size:12px;color:var(--c-text2);line-height:1.7;white-space:pre-wrap;max-height:200px;overflow-y:auto;background:var(--c-surface2);padding:12px 14px;border-radius:6px}}
+.resp-text{{font-size:12px;color:var(--c-text2);line-height:1.7;max-height:200px;overflow-y:auto;background:var(--c-surface2);padding:12px 14px;border-radius:6px}}
+.resp-text p{{margin:0 0 8px}}
+.resp-text p:last-child{{margin:0}}
+.resp-text h1,.resp-text h2,.resp-text h3,.resp-text h4{{font-size:13px;font-weight:700;color:var(--c-text);margin:10px 0 4px}}
+.resp-text ul,.resp-text ol{{margin:4px 0;padding-left:20px}}
+.resp-text li{{margin:2px 0}}
+.resp-text table{{width:100%;border-collapse:collapse;margin:8px 0;font-size:11px}}
+.resp-text th,.resp-text td{{border:1px solid var(--c-border);padding:4px 8px;text-align:left}}
+.resp-text th{{background:var(--c-surface);font-weight:600}}
+.resp-text strong{{color:var(--c-text)}}
+.resp-text code{{font-size:11px;background:var(--c-surface);padding:1px 4px;border-radius:3px}}
 .resp-meta{{font-size:10px;color:var(--c-text4);margin-top:6px}}
 .resp-err{{color:var(--c-negative);font-weight:600;font-size:12px}}
 .resp-toggle{{font-size:11px;color:var(--c-text3);cursor:pointer;text-decoration:underline;margin-top:4px;display:inline-block}}

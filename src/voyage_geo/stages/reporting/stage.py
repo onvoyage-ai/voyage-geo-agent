@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+import mistune
 import structlog
 
 from voyage_geo.core.context import RunContext
@@ -379,7 +380,15 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 .qresp .qp{{font-weight:600;color:var(--c-text2)}}
 .qresp .qm{{color:var(--c-text3);font-size:10px}}
 .qresp .qprev{{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c-text3)}}
-.qresp-body{{padding:14px 20px 18px;font-size:12px;color:var(--c-text2);line-height:1.7;white-space:pre-wrap;max-height:420px;overflow-y:auto;background:var(--c-bg);border-top:1px solid var(--c-surface2)}}
+.qresp-body{{padding:14px 20px 18px;font-size:12px;color:var(--c-text2);line-height:1.7;max-height:420px;overflow-y:auto;background:var(--c-bg);border-top:1px solid var(--c-surface2)}}
+.qresp-body p{{margin:0 0 8px}}.qresp-body p:last-child{{margin:0}}
+.qresp-body h1,.qresp-body h2,.qresp-body h3,.qresp-body h4{{font-size:13px;font-weight:700;color:var(--c-text);margin:10px 0 4px}}
+.qresp-body ul,.qresp-body ol{{margin:4px 0;padding-left:20px}}.qresp-body li{{margin:2px 0}}
+.qresp-body table{{width:100%;border-collapse:collapse;margin:8px 0;font-size:11px}}
+.qresp-body th,.qresp-body td{{border:1px solid var(--c-surface2);padding:4px 8px;text-align:left}}
+.qresp-body th{{background:var(--c-surface);font-weight:600}}
+.qresp-body strong{{color:var(--c-text)}}
+.qresp-body code{{font-size:11px;background:var(--c-surface);padding:1px 4px;border-radius:3px}}
 
 /* ── Footer ── */
 .foot{{margin-top:56px;padding-top:24px;border-top:1px solid var(--c-border);display:flex;justify-content:space-between;font-size:11px;color:var(--c-text3)}}
@@ -536,6 +545,7 @@ body{{background:#fff}}
         if not ctx.execution_run or not ctx.execution_run.results:
             return ""
         e = html_mod.escape
+        md = mistune.create_markdown(escape=True)
         query_meta: dict[str, dict[str, str]] = {}
         if ctx.query_set:
             for q in ctx.query_set.queries:
@@ -560,7 +570,7 @@ body{{background:#fff}}
             for r in resps:
                 prev = e((r.response or "")[:100]) + ("..." if len(r.response or "") > 100 else "")
                 logo = _provider_logo(r.provider)
-                inner += f'<details class="qresp"><summary><span class="qp-logo">{logo}</span><span class="qp">{e(r.provider)}</span><span class="qm">{e(r.model)}</span><span class="qprev">{prev}</span></summary><div class="qresp-body">{e(r.response or "(no response)")}</div></details>'
+                inner += f'<details class="qresp"><summary><span class="qp-logo">{logo}</span><span class="qp">{e(r.provider)}</span><span class="qm">{e(r.model)}</span><span class="qprev">{prev}</span></summary><div class="qresp-body">{md(r.response or "(no response)")}</div></details>'
             parts.append(f'<div class="qcard"><div class="qcard-q">{e(qt)}{badges}</div>{inner}</div>')
         parts.append("</div></div>")
         return "\n".join(parts)

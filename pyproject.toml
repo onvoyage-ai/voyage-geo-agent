@@ -39,6 +39,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "aiofiles>=24.1.0",
     "structlog>=24.4.0",
+    "mistune>=3.0.0",
 ]
 
 [project.optional-dependencies]
