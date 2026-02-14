@@ -249,6 +249,97 @@ def report(
 
 
 @app.command()
+def leaderboard(
+    category: str = typer.Argument(..., help="Category to analyze (e.g. 'top vc', 'best CRM tools')"),
+    providers: str = typer.Option(
+        "chatgpt,gemini,claude,perplexity-or,deepseek,grok,llama",
+        "--providers",
+        "-p",
+        help="Comma-separated provider names",
+    ),
+    queries: int = typer.Option(20, "--queries", "-q", help="Number of queries to generate"),
+    formats: str = typer.Option("html,json", "--formats", "-f", help="Report formats (html,json,csv,markdown)"),
+    concurrency: int = typer.Option(10, "--concurrency", "-c", help="Concurrent API requests"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
+    max_brands: int = typer.Option(50, "--max-brands", help="Max brands to extract from AI responses"),
+    processing_provider: str | None = typer.Option(None, "--processing-provider", help="Provider for non-execution LLM calls"),
+    processing_model: str | None = typer.Option(None, "--processing-model", help="Model for non-execution LLM calls"),
+    stop_after: str | None = typer.Option(None, "--stop-after", help="Stop after stage (e.g. query-generation) for review"),
+    resume: str | None = typer.Option(None, "--resume", "-r", help="Resume from an existing leaderboard run ID"),
+) -> None:
+    """Run category-wide leaderboard — compare all brands in a category."""
+    from voyage_geo.config.loader import load_config
+
+    overrides: dict = {
+        "queries": {"count": queries},
+        "execution": {"concurrency": concurrency},
+        "report": {"formats": formats.split(",")},
+        "output_dir": output_dir,
+    }
+
+    # Apply processing model overrides
+    processing_overrides: dict = {}
+    if processing_provider:
+        processing_overrides["provider"] = processing_provider
+    if processing_model:
+        processing_overrides["model"] = processing_model
+    if processing_overrides:
+        overrides["processing"] = processing_overrides
+
+    config = load_config(overrides=overrides)
+
+    # Filter providers
+    requested = [p.strip() for p in providers.split(",")]
+    for name in list(config.providers.keys()):
+        if name not in requested:
+            config.providers[name].enabled = False
+
+    enabled = [n for n, p in config.providers.items() if p.enabled and p.api_key]
+    if not enabled:
+        console.print("[red]No providers configured with API keys.[/red]")
+        console.print("Set OPENROUTER_API_KEY for all models, or individual keys: OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY, PERPLEXITY_API_KEY")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold blue]Voyage GEO[/bold blue] v{__version__}")
+    console.print(f"Category: [bold]{category}[/bold]")
+    console.print(f"Brands: extracted from AI responses (max {max_brands})")
+    console.print(f"Providers: {', '.join(enabled)}")
+    console.print(f"Queries: {queries} | Concurrency: {concurrency}\n")
+
+    from voyage_geo.core.leaderboard_engine import LeaderboardEngine
+
+    # Validate resume run exists
+    if resume:
+        from voyage_geo.storage.filesystem import FileSystemStorage
+        _storage = FileSystemStorage(output_dir)
+        if not _storage.run_dir(resume).exists():
+            console.print(f"[red]Run not found:[/red] {resume}")
+            available = _storage.list_runs()
+            if available:
+                console.print(f"Available runs: {', '.join(available[:5])}")
+            raise typer.Exit(1)
+
+    engine = LeaderboardEngine(
+        config,
+        category,
+        max_brands=max_brands,
+        report_formats=formats.split(","),
+        stop_after=stop_after,
+        resume_run_id=resume,
+    )
+    result = asyncio.run(engine.run())
+
+    console.print()
+    console.print("[bold green]Leaderboard Complete[/bold green]")
+    console.print(f"  Category: {category}")
+    console.print(f"  Brands: {len(result.brands)}")
+    console.print(f"  #1: [bold]{result.entries[0].brand}[/bold] ({result.entries[0].overall_score:.0f}/100)" if result.entries else "")
+    console.print(f"  Run: {result.run_id}")
+    report_path = f"{output_dir}/{result.run_id}/reports/leaderboard.html"
+    console.print(f"  Report: [link=file://{report_path}]{report_path}[/link]")
+
+
+@app.command()
 def runs(
     output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Output directory"),
 ) -> None:
@@ -265,7 +356,8 @@ def runs(
 
     table = Table(title="Past Runs", show_header=True, header_style="bold")
     table.add_column("Run ID")
-    table.add_column("Brand")
+    table.add_column("Type")
+    table.add_column("Brand / Category")
     table.add_column("Status")
     table.add_column("Date")
 
@@ -274,9 +366,11 @@ def runs(
         if meta_path.exists():
             with open(meta_path) as f:
                 meta = json.load(f)
-            table.add_row(rid, meta.get("brand", "—"), meta.get("status", "—"), meta.get("started_at", "—")[:19])
+            run_type = meta.get("type", "analysis")
+            label = meta.get("category", meta.get("brand", "—"))
+            table.add_row(rid, run_type, label, meta.get("status", "—"), meta.get("started_at", "—")[:19])
         else:
-            table.add_row(rid, "—", "—", "—")
+            table.add_row(rid, "—", "—", "—", "—")
 
     console.print(table)
 

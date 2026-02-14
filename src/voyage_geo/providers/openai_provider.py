@@ -23,12 +23,14 @@ class OpenAIProvider(BaseProvider):
         model = self.config.model or "gpt-5-mini"
         start = time.perf_counter()
         try:
-            response = await self.client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature,
-            )
+            kwargs: dict = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": self.config.temperature,
+            }
+            if self.config.max_tokens is not None:
+                kwargs["max_tokens"] = self.config.max_tokens
+            response = await self.client.chat.completions.create(**kwargs)
             text = response.choices[0].message.content or ""
             latency = int((time.perf_counter() - start) * 1000)
             usage = None

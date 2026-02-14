@@ -66,6 +66,6 @@ class FileSystemStorage:
         if not self.base_dir.exists():
             return []
         return sorted(
-            [d.name for d in self.base_dir.iterdir() if d.is_dir() and d.name.startswith("run-")],
+            [d.name for d in self.base_dir.iterdir() if d.is_dir() and (d.name.startswith("run-") or d.name.startswith("lb-"))],
             reverse=True,
         )

@@ -55,7 +55,7 @@ class BaseProvider(abc.ABC):
             return {"provider": self.name, "healthy": False, "latency_ms": latency, "model": "", "error": str(e)}
 
     async def _with_timeout(self, coro, timeout_ms: int | None = None):
-        timeout = (timeout_ms or self.config.max_tokens or 30000) / 1000
+        timeout = (timeout_ms or 30000) / 1000
         timeout = max(timeout, 15.0)
         try:
             return await asyncio.wait_for(coro, timeout=timeout)

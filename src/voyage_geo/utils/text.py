@@ -105,6 +105,97 @@ JSON array of brand names (no explanation, just the array):"""
     return []
 
 
+async def extract_all_brands_with_llm(
+    responses: list[str],
+    category: str,
+    provider: BaseProvider,
+    max_brands: int = 50,
+    *,
+    industry: str = "",
+    keywords: list[str] | None = None,
+    sample_queries: list[str] | None = None,
+) -> list[str]:
+    """Extract ALL brand/company names from AI responses — for leaderboard mode.
+
+    Unlike extract_competitors_with_llm, this does NOT exclude any target brand.
+    It extracts every brand mentioned, ordered by frequency, for ranking.
+    Uses batched extraction for large response sets to avoid truncation.
+    """
+    # Build context block for the prompt
+    context_parts = [f'Category: "{category}"']
+    if industry:
+        context_parts.append(f"Industry: {industry}")
+    if keywords:
+        context_parts.append(f"Keywords: {', '.join(keywords[:10])}")
+    if sample_queries:
+        q_list = "\n".join(f"  - {q}" for q in sample_queries[:5])
+        context_parts.append(f"Sample queries we asked AI models:\n{q_list}")
+    context_block = "\n".join(context_parts)
+
+    # Split responses into chunks that fit context
+    chunks: list[str] = []
+    current_chunk: list[str] = []
+    current_len = 0
+    for resp in responses:
+        if current_len + len(resp) > 12000 and current_chunk:
+            chunks.append("\n---\n".join(current_chunk))
+            current_chunk = []
+            current_len = 0
+        current_chunk.append(resp)
+        current_len += len(resp)
+    if current_chunk:
+        chunks.append("\n---\n".join(current_chunk))
+
+    all_names: list[str] = []
+    seen: set[str] = set()
+
+    for i, chunk in enumerate(chunks):
+        prompt = f"""You are building a competitive leaderboard. We asked AI models questions about "{category}" and now need to extract which brands/companies WITHIN that category were recommended.
+
+CONTEXT:
+{context_block}
+
+GOAL: Extract ONLY the names of entities that are actual competitors in the "{category}" category — the ones being ranked and recommended.
+
+CRITICAL RULES:
+- ONLY include brands that ARE "{category}" themselves — entities that directly compete in this space
+- EXCLUDE companies mentioned as customers, portfolio companies, success stories, case studies, or examples from other industries
+  Example: For "venture capital firms" → include "Sequoia Capital", "Andreessen Horowitz" — exclude "Airbnb", "Uber", "Stripe" (those are startups VCs invested in, not VCs)
+  Example: For "CRM tools" → include "Salesforce", "HubSpot" — exclude "Amazon", "Tesla" (those are customers, not CRM tools)
+- EXCLUDE generic terms, technologies, acronyms, people's names, and non-brand words
+- Order by how frequently they appear (most frequent first)
+- Return at most {max_brands} names
+- Return ONLY a valid JSON array of strings, nothing else
+
+AI RESPONSES:
+{chunk}
+
+JSON array of "{category}" brand names only:"""
+
+        try:
+            resp = await provider.query(prompt)
+            text = resp.text.strip()
+            if "```" in text:
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+                text = text.strip()
+            start = text.find("[")
+            end = text.rfind("]")
+            if start != -1 and end != -1:
+                text = text[start : end + 1]
+            names = json.loads(text)
+            if isinstance(names, list):
+                for name in names:
+                    if isinstance(name, str) and name.lower() not in seen:
+                        seen.add(name.lower())
+                        all_names.append(name)
+        except Exception:
+            logger.warning("llm_brand_extraction_failed", chunk=i + 1)
+
+    return all_names[:max_brands]
+
+
 async def extract_narratives_with_llm(
     responses: list[str],
     target_brand: str,

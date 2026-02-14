@@ -11,7 +11,7 @@ class ProviderConfig(BaseModel):
     api_key: str | None = None
     model: str | None = None
     base_url: str | None = None
-    max_tokens: int = 2048
+    max_tokens: int | None = None
     temperature: float = 0.7
     rate_limit_rpm: int = 60
 

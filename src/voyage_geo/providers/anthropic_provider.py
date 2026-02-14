@@ -25,7 +25,7 @@ class AnthropicProvider(BaseProvider):
         try:
             response = await self.client.messages.create(
                 model=model,
-                max_tokens=self.config.max_tokens,
+                max_tokens=self.config.max_tokens or 4096,
                 messages=[{"role": "user", "content": prompt}],
             )
             block = response.content[0] if response.content else None

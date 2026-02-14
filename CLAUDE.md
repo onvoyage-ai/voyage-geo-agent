@@ -15,6 +15,7 @@ The primary interface is through Claude Code slash commands:
 - `/geo-report` — Generate shareable reports (HTML, CSV, Markdown, JSON) from existing runs.
 - `/geo-add-provider` — Add a new AI model provider with guided implementation.
 - `/geo-debug` — Diagnose and fix failed or problematic runs.
+- `/geo-leaderboard` — Category-wide brand comparison. Ranks all brands in a category by AI visibility.
 
 Start with `/geo-setup` if this is your first time, or `/geo-run` if you're already configured.
 
@@ -64,6 +65,8 @@ python3 -m voyage_geo providers            # list configured providers
 python3 -m voyage_geo providers --test     # health check providers
 python3 -m voyage_geo research "<brand>" -w "<url>"
 python3 -m voyage_geo report -r <run-id> -f html,json,csv,markdown
+python3 -m voyage_geo leaderboard "<category>" -p chatgpt,claude -q 20 -f html,json,csv,markdown
+python3 -m voyage_geo leaderboard "<category>" --brands "A,B,C" --max-brands 10
 python3 -m voyage_geo runs                 # list past runs
 python3 -m voyage_geo version
 ```
