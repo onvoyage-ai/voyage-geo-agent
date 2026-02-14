@@ -70,7 +70,7 @@ class LeaderboardRenderer:
         lines = [
             f"# Leaderboard: {result.category}",
             f"*Generated {result.analyzed_at[:10]} | {len(result.brands)} brands | {result.total_queries} queries | {len(result.providers_used)} providers*\n",
-            "## Rankings",
+            "## Leaderboard",
             "| Rank | Brand | Score | Mention Rate | Mindshare | Sentiment |",
             "|------|-------|-------|-------------|-----------|-----------|",
         ]
@@ -587,7 +587,7 @@ body{{background:#fff}}
 </div>
 
 <div class="sect" id="sect-rankings">
-<div class="dl-wrap"><h3>Rankings</h3><button class="dl-btn" onclick="downloadPNG('sect-rankings','rankings')"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>PNG</button></div>
+<div class="dl-wrap"><h3>Leaderboard</h3><button class="dl-btn" onclick="downloadPNG('sect-rankings','leaderboard')"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>PNG</button></div>
 <div class="panel">
 <table class="comp-tbl">
 <thead><tr>
@@ -617,6 +617,9 @@ function downloadPNG(sectionId, filename) {{
   var origText = btn.innerHTML;
   btn.innerHTML = 'Capturing...';
   btn.style.pointerEvents = 'none';
+  // Hide all download buttons in this section before capture
+  var allBtns = el.querySelectorAll('.dl-btn');
+  allBtns.forEach(function(b) {{ b.style.display = 'none'; }});
   html2canvas(el, {{
     backgroundColor: '#f8f8f7',
     scale: 2,
@@ -627,9 +630,11 @@ function downloadPNG(sectionId, filename) {{
     link.download = filename + '.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
+    allBtns.forEach(function(b) {{ b.style.display = ''; }});
     btn.innerHTML = origText;
     btn.style.pointerEvents = '';
   }}).catch(function() {{
+    allBtns.forEach(function(b) {{ b.style.display = ''; }});
     btn.innerHTML = origText;
     btn.style.pointerEvents = '';
   }});
