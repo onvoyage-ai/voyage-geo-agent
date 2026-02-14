@@ -16,6 +16,32 @@ from voyage_geo.utils.progress import console, stage_header
 
 logger = structlog.get_logger()
 
+# Provider logo SVGs — small inline icons with brand colors
+# Each is a 20x20 SVG with the provider's logo/mark
+PROVIDER_LOGOS: dict[str, str] = {
+    "chatgpt": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#10a37f"/><path d="M10 4.5c-.4 0-.8.3-.8.7v3l-2.6-1.5a.8.8 0 00-1.1.3.8.8 0 00.3 1.1L8.4 9.6l-2.6 1.5a.8.8 0 00-.3 1.1.8.8 0 001.1.3l2.6-1.5v3c0 .4.4.7.8.7s.8-.3.8-.7v-3l2.6 1.5a.8.8 0 001.1-.3.8.8 0 00-.3-1.1l-2.6-1.5 2.6-1.5a.8.8 0 00.3-1.1.8.8 0 00-1.1-.3l-2.6 1.5v-3c0-.4-.4-.7-.8-.7z" fill="white"/></svg>',
+    "claude": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#d4956b"/><path d="M10.8 5.5L7 14h1.7l.8-1.8h3.3l.7 1.8H15l-3.1-8.5h-1.1zm.1 3l1.1 2.7H9.8l1.1-2.7z" fill="white"/></svg>',
+    "gemini": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#4285f4"/><path d="M10 4a6 6 0 00-6 6c0 1.5.6 2.9 1.5 4A6 6 0 0010 16a6 6 0 004.5-2 6 6 0 001.5-4 6 6 0 00-6-6zm0 1.8a4.2 4.2 0 014.2 4.2A4.2 4.2 0 0110 14.2 4.2 4.2 0 015.8 10 4.2 4.2 0 0110 5.8z" fill="white" fill-opacity=".5"/><circle cx="10" cy="10" r="2.5" fill="white"/></svg>',
+    "perplexity-or": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#20808d"/><path d="M10 4L5 8l5 4 5-4-5-4zM5 12l5 4 5-4" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    "perplexity": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#20808d"/><path d="M10 4L5 8l5 4 5-4-5-4zM5 12l5 4 5-4" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    "deepseek": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#4D6BFE"/><path d="M6.5 6.5C6.5 6.5 8 5 10 5s3.5 1.5 3.5 1.5M7 10h6M6.5 13.5S8 15 10 15s3.5-1.5 3.5-1.5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    "grok": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#1a1a1a"/><path d="M6 6l3.5 4L6 14M10.5 6L14 10l-3.5 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    "llama": '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="#6C3AED"/><path d="M8 14V8.5C8 7 9 5.5 10 5.5S12 7 12 8.5V14M8 11h4M7 14h1.5M11.5 14H13" stroke="white" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+}
+
+# Fallback: generate a colored circle with initial
+_FALLBACK_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#14b8a6", "#f59e0b", "#ef4444", "#ec4899"]
+
+
+def _provider_logo(name: str) -> str:
+    """Return inline SVG logo HTML for a provider, or a colored initial fallback."""
+    if name in PROVIDER_LOGOS:
+        return PROVIDER_LOGOS[name]
+    # Fallback: colored rounded square with first letter
+    color = _FALLBACK_COLORS[hash(name) % len(_FALLBACK_COLORS)]
+    initial = name[0].upper() if name else "?"
+    return f'<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect width="20" height="20" rx="5" fill="{color}"/><text x="10" y="14.5" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="11" font-weight="700">{initial}</text></svg>'
+
 
 class ReportingStage(PipelineStage):
     name = "reporting"
@@ -157,7 +183,8 @@ class ReportingStage(PipelineStage):
                 if colors_by_label:
                     lb = colors_by_label.get(p, "neutral")
                     bar_color = f' style="background:var(--c-{lb})"'
-                rows += f'<div class="pv-row"><span class="pv-name">{e(p)}</span><div class="pv-bar"><div class="pv-fill"{bar_color} style="width:{w:.0f}%{bar_color}"></div></div><span class="pv-val">{val_str}</span></div>'
+                logo = _provider_logo(p)
+                rows += f'<div class="pv-row"><span class="pv-logo">{logo}</span><span class="pv-name">{e(p)}</span><div class="pv-bar"><div class="pv-fill"{bar_color} style="width:{w:.0f}%{bar_color}"></div></div><span class="pv-val">{val_str}</span></div>'
             return rows
 
         mr_rows = make_provider_rows(a.mention_rate.by_provider, "pct")
@@ -247,7 +274,9 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 
 /* ── Provider bars ── */
 .pv-row{{display:flex;align-items:center;gap:12px;height:34px}}
-.pv-name{{font-size:12px;font-weight:500;color:var(--c-text2);width:90px;text-align:right;flex-shrink:0}}
+.pv-logo{{width:20px;height:20px;flex-shrink:0;border-radius:5px}}
+.pv-logo svg{{display:block}}
+.pv-name{{font-size:12px;font-weight:500;color:var(--c-text2);width:70px;text-align:left;flex-shrink:0}}
 .pv-bar{{flex:1;height:5px;background:var(--c-surface2);border-radius:99px;overflow:hidden}}
 .pv-fill{{height:100%;border-radius:99px;background:var(--c-accent);transition:width .5s cubic-bezier(.4,0,.2,1)}}
 .pv-val{{font-size:12px;font-weight:700;color:var(--c-text);width:50px;text-align:right;font-variant-numeric:tabular-nums}}
@@ -325,7 +354,9 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 .exc-pos{{border-left-color:var(--c-positive)}}
 .exc-neg{{border-left-color:var(--c-negative)}}
 .exc-text{{font-size:13px;color:var(--c-text2);line-height:1.65}}
-.exc-meta{{font-size:11px;color:var(--c-text3);margin-top:6px;font-weight:500}}
+.exc-meta{{font-size:11px;color:var(--c-text3);margin-top:6px;font-weight:500;display:flex;align-items:center;gap:6px}}
+.exc-logo{{width:16px;height:16px;flex-shrink:0}}
+.exc-logo svg{{width:16px;height:16px;display:block}}
 
 /* ── Queries ── */
 .qsect{{margin-top:52px;padding-top:44px;border-top:1px solid var(--c-border)}}
@@ -338,6 +369,8 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 .qresp:last-child{{border:none}}
 .qresp summary{{cursor:pointer;padding:10px 20px;font-size:12px;color:var(--c-text3);display:flex;gap:8px;align-items:baseline;transition:background .15s}}
 .qresp summary:hover{{background:var(--c-surface2)}}
+.qp-logo{{width:18px;height:18px;flex-shrink:0}}
+.qp-logo svg{{width:18px;height:18px;display:block}}
 .qresp .qp{{font-weight:600;color:var(--c-text2)}}
 .qresp .qm{{color:var(--c-text3);font-size:10px}}
 .qresp .qprev{{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--c-text3)}}
@@ -488,8 +521,8 @@ body{{background:#fff}}
         has_neg = bool(a.sentiment.top_negative)
         if not has_pos and not has_neg:
             return ""
-        pos_h = "".join(f'<div class="exc exc-pos"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta">{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_positive[:5])
-        neg_h = "".join(f'<div class="exc exc-neg"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta">{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_negative[:5])
+        pos_h = "".join(f'<div class="exc exc-pos"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta"><span class="exc-logo">{_provider_logo(x.provider)}</span>{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_positive[:5])
+        neg_h = "".join(f'<div class="exc exc-neg"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta"><span class="exc-logo">{_provider_logo(x.provider)}</span>{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_negative[:5])
         left = f'<div class="panel"><div class="panel-head">Top Positive</div><div class="panel-body">{pos_h}</div></div>' if has_pos else ""
         right = f'<div class="panel"><div class="panel-head">Top Negative</div><div class="panel-body">{neg_h}</div></div>' if has_neg else ""
         return f'<div class="sect"><h3>Sentiment Excerpts</h3><div class="g2">{left}{right}</div></div>'
@@ -521,7 +554,8 @@ body{{background:#fff}}
             inner = ""
             for r in resps:
                 prev = e((r.response or "")[:100]) + ("..." if len(r.response or "") > 100 else "")
-                inner += f'<details class="qresp"><summary><span class="qp">{e(r.provider)}</span><span class="qm">{e(r.model)}</span><span class="qprev">{prev}</span></summary><div class="qresp-body">{e(r.response or "(no response)")}</div></details>'
+                logo = _provider_logo(r.provider)
+                inner += f'<details class="qresp"><summary><span class="qp-logo">{logo}</span><span class="qp">{e(r.provider)}</span><span class="qm">{e(r.model)}</span><span class="qprev">{prev}</span></summary><div class="qresp-body">{e(r.response or "(no response)")}</div></details>'
             parts.append(f'<div class="qcard"><div class="qcard-q">{e(qt)}{badges}</div>{inner}</div>')
         parts.append("</div></div>")
         return "\n".join(parts)
