@@ -505,18 +505,18 @@ JSON object:"""
                     continue
             to_analyze.append(brand)
 
-        # Parallel analysis in batches
-        BATCH_SIZE = 8
+        # Parallel analysis with bounded workers (config-driven, not fixed batch size).
+        analysis_workers = max(1, min(64, self.config.execution.concurrency))
+        semaphore = asyncio.Semaphore(analysis_workers)
         analyzed_count = len(entries)
-        for batch_start in range(0, len(to_analyze), BATCH_SIZE):
-            batch = to_analyze[batch_start : batch_start + BATCH_SIZE]
-            for b in batch:
-                analyzed_count += 1
-                analysis_progress(b, analyzed_count, len(brands))
 
-            batch_entries = await asyncio.gather(*[
-                self._analyze_single_brand(
-                    brand=b,
+        async def _analyze_with_limit(brand: str) -> LeaderboardEntry:
+            nonlocal analyzed_count
+            async with semaphore:
+                analyzed_count += 1
+                analysis_progress(brand, analyzed_count, len(brands))
+                return await self._analyze_single_brand(
+                    brand=brand,
                     brands=brands,
                     run_id=run_id,
                     industry=industry,
@@ -527,9 +527,11 @@ JSON object:"""
                     ranked_lists_by_response=ranked_lists_by_response,
                     analyzers_enabled=analyzers_enabled,
                 )
-                for b in batch
-            ])
-            entries.extend(batch_entries)
+
+        if to_analyze:
+            tasks = [asyncio.create_task(_analyze_with_limit(b)) for b in to_analyze]
+            for task in asyncio.as_completed(tasks):
+                entries.append(await task)
 
         # Step 6: Rank by score
         entries.sort(key=lambda e: e.overall_score, reverse=True)
