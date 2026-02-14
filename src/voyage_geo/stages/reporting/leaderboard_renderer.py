@@ -51,7 +51,7 @@ class LeaderboardRenderer:
         writer = csv.writer(buf)
         writer.writerow([
             "rank", "brand", "overall_score", "mention_rate",
-            "mindshare", "sentiment_score", "sentiment_label",
+            "mindshare", "rank_position_score", "avg_rank_position", "sentiment_score", "sentiment_label",
         ])
         for entry in result.entries:
             writer.writerow([
@@ -60,6 +60,8 @@ class LeaderboardRenderer:
                 f"{entry.overall_score:.1f}",
                 f"{entry.mention_rate:.3f}",
                 f"{entry.mindshare:.3f}",
+                f"{entry.rank_position_score:.3f}",
+                f"{entry.avg_rank_position:.2f}",
                 f"{entry.sentiment_score:.3f}",
                 entry.sentiment_label,
             ])
@@ -80,6 +82,15 @@ class LeaderboardRenderer:
                 f"| {entry.rank} | {entry.brand} | {entry.overall_score:.0f} | "
                 f"{entry.mention_rate*100:.0f}% | {entry.mindshare*100:.1f}% | "
                 f"{entry.sentiment_label} ({entry.sentiment_score:+.2f}) |"
+            )
+
+        lines.append("\n## Rank Position Signal")
+        lines.append("| Rank | Brand | Rank-Position Score | Avg Position |")
+        lines.append("|------|-------|---------------------|--------------|")
+        for entry in result.entries:
+            avg_pos = f"#{entry.avg_rank_position:.1f}" if entry.avg_rank_position > 0 else "—"
+            lines.append(
+                f"| {entry.rank} | {entry.brand} | {entry.rank_position_score:.3f} | {avg_pos} |"
             )
 
         # Provider heatmap
@@ -149,6 +160,13 @@ class LeaderboardRenderer:
                     )
                 adv_html = f'<div class="ar-strip">{logos}</div>'
 
+            # Avg rank position display — clean text, no colored pills
+            if entry.avg_rank_position > 0:
+                rp = entry.avg_rank_position
+                rp_html = f'<span class="t-rp">#{rp:.1f}</span>'
+            else:
+                rp_html = '<span class="t-rp t-rp-none">—</span>'
+
             ranking_rows += (
                 f'<tr>'
                 f'<td class="t-rank">{entry.rank}</td>'
@@ -160,6 +178,7 @@ class LeaderboardRenderer:
                 f'<td><div class="t-bar-wrap" style="width:80px">'
                 f'<div class="t-bar t-bar-ms" style="width:{ms_pct:.0f}%"></div></div>'
                 f'<span class="t-pct">{ms_pct:.1f}%</span></td>'
+                f'<td>{rp_html}</td>'
                 f'<td class="t-sent t-{s_cls}">{entry.sentiment_score:+.2f}</td>'
                 f'<td>{adv_html}</td>'
                 f'</tr>'
@@ -446,6 +465,10 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 .geo-pill{{display:inline-block;font-size:14px;font-weight:800;padding:5px 12px;border-radius:8px;border:1px solid;letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:42px;text-align:center}}
 .geo-pill-lg{{font-size:22px;padding:8px 16px;border-radius:10px;min-width:56px}}
 
+/* Rank position */
+.t-rp{{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--c-text2)}}
+.t-rp-none{{color:var(--c-text3);font-weight:400}}
+
 /* AI Consensus dots */
 .consensus{{display:flex;align-items:center;gap:8px}}
 .consensus-dots{{display:flex;gap:3px;align-items:center}}
@@ -591,7 +614,7 @@ body{{background:#fff}}
 <div class="panel">
 <table class="comp-tbl">
 <thead><tr>
-<th></th><th>Brand</th><th>GEO Score</th><th>Mentions</th><th>Mindshare</th><th>Sentiment</th><th>Advocate</th>
+<th></th><th>Brand</th><th>GEO Score</th><th>Mentions</th><th>Mindshare</th><th>Avg Rank</th><th>Sentiment</th><th>Advocate</th>
 </tr></thead>
 <tbody>{ranking_rows}</tbody>
 </table>

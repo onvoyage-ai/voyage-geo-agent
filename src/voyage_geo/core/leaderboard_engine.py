@@ -34,7 +34,11 @@ from voyage_geo.utils.leaderboard_progress import (
     print_leaderboard_table,
 )
 from voyage_geo.utils.progress import console
-from voyage_geo.utils.text import extract_all_brands_with_llm, extract_narratives_with_llm
+from voyage_geo.utils.text import (
+    extract_all_brands_with_llm,
+    extract_narratives_with_llm,
+    extract_ranked_brands_with_llm,
+)
 
 logger = structlog.get_logger()
 
@@ -302,6 +306,22 @@ JSON object:"""
 
         # Extract narratives for analysis
         extracted_claims: list[dict] = []
+        ranked_lists_by_response: dict[str, list[str]] = {}
+
+        console.print(f"  Extracting rank positions via {self._processing_provider.display_name}...")
+        response_items = [
+            (f"{r.provider}:{r.query_id}:{r.iteration}", r.response)
+            for r in valid_results
+        ]
+        ranked_lists_by_response = await extract_ranked_brands_with_llm(
+            response_items,
+            category_label,
+            self._processing_provider,
+            brands,
+        )
+        ranked_covered = sum(1 for v in ranked_lists_by_response.values() if v)
+        console.print(f"  [green]Detected explicit rankings in {ranked_covered} responses[/green]")
+
         console.print(f"  Extracting narratives via {self._processing_provider.display_name}...")
         extracted_claims = await extract_narratives_with_llm(
             response_texts, category_label, category_label, self._processing_provider
@@ -345,6 +365,10 @@ JSON object:"""
                     result = analyzer_instance.analyze(
                         results, brand_profile, extracted_competitors=brands
                     )
+                elif analyzer_name == "rank-position":
+                    result = analyzer_instance.analyze(
+                        results, brand_profile, ranked_lists_by_response=ranked_lists_by_response
+                    )
                 elif analyzer_name == "narrative":
                     result = analyzer_instance.analyze(
                         results, brand_profile, extracted_claims=extracted_claims
@@ -360,6 +384,8 @@ JSON object:"""
                     analysis.sentiment = result
                 elif analyzer_name == "positioning":
                     analysis.positioning = result
+                elif analyzer_name == "rank-position":
+                    analysis.rank_position = result
                 elif analyzer_name == "citation":
                     analysis.citations = result
                 elif analyzer_name == "competitor":
@@ -382,6 +408,8 @@ JSON object:"""
                 overall_score=analysis.summary.overall_score,
                 mention_rate=analysis.mention_rate.overall,
                 mindshare=analysis.mindshare.overall,
+                rank_position_score=analysis.rank_position.weighted_visibility,
+                avg_rank_position=analysis.rank_position.avg_position,
                 sentiment_score=analysis.sentiment.overall,
                 sentiment_label=analysis.sentiment.label,
                 mention_rate_by_provider=dict(analysis.mention_rate.by_provider),

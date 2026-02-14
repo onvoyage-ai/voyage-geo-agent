@@ -54,6 +54,17 @@ class PositioningScore(BaseModel):
     by_provider: dict[str, str] = {}
 
 
+class RankPositionScore(BaseModel):
+    total_ranked_responses: int = 0
+    mention_in_ranked_lists: int = 0
+    mention_coverage: float = 0.0  # mention_in_ranked_lists / total_ranked_responses
+    avg_position: float = 0.0
+    median_position: float = 0.0
+    top3_rate: float = 0.0
+    weighted_visibility: float = 0.0  # avg(1/position) over ranked responses
+    by_provider: dict[str, float] = {}
+
+
 class CitationSource(BaseModel):
     source: str
     count: int
@@ -122,6 +133,7 @@ class AnalysisResult(BaseModel):
     mention_rate: MentionRateScore = MentionRateScore()
     sentiment: SentimentScore = SentimentScore()
     positioning: PositioningScore = PositioningScore()
+    rank_position: RankPositionScore = RankPositionScore()
     citations: CitationScore = CitationScore()
     competitor_analysis: CompetitorAnalysis = CompetitorAnalysis()
     narrative: NarrativeAnalysis = NarrativeAnalysis()

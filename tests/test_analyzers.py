@@ -10,6 +10,7 @@ from voyage_geo.stages.analysis.analyzers.competitor import CompetitorAnalyzer
 from voyage_geo.stages.analysis.analyzers.mention_rate import MentionRateAnalyzer
 from voyage_geo.stages.analysis.analyzers.mindshare import MindshareAnalyzer
 from voyage_geo.stages.analysis.analyzers.positioning import PositioningAnalyzer
+from voyage_geo.stages.analysis.analyzers.rank_position import RankPositionAnalyzer
 from voyage_geo.stages.analysis.analyzers.sentiment import SentimentAnalyzer
 from voyage_geo.types.brand import BrandProfile
 from voyage_geo.types.result import QueryResult
@@ -80,6 +81,49 @@ class TestPositioning:
     def test_extracts_attributes(self, results, profile):
         score = PositioningAnalyzer().analyze(results, profile)
         assert isinstance(score.primary_position, str)
+
+
+class TestRankPosition:
+    def test_calculates_rank_position_signal(self):
+        profile = BrandProfile(name="Notion", competitors=["Coda", "Confluence"], category="docs")
+        results = [
+            QueryResult(
+                query_id="q1",
+                query_text="rank tools",
+                provider="openai",
+                model="test",
+                response="1. Notion 2. Coda 3. Confluence",
+                latency_ms=10,
+            ),
+            QueryResult(
+                query_id="q2",
+                query_text="tier list",
+                provider="openai",
+                model="test",
+                response="S-tier: Coda, Notion",
+                latency_ms=10,
+            ),
+            QueryResult(
+                query_id="q3",
+                query_text="non-ranking",
+                provider="openai",
+                model="test",
+                response="Notion has good docs",
+                latency_ms=10,
+            ),
+        ]
+        ranked_lists = {
+            "openai:q1:1": ["Notion", "Coda", "Confluence"],
+            "openai:q2:1": ["Coda", "Notion"],
+        }
+
+        score = RankPositionAnalyzer().analyze(results, profile, ranked_lists_by_response=ranked_lists)
+
+        assert score.total_ranked_responses == 2
+        assert score.mention_in_ranked_lists == 2
+        assert score.avg_position == 1.5
+        assert score.top3_rate == 1.0
+        assert score.weighted_visibility > 0
 
 
 class TestCitation:

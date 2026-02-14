@@ -46,3 +46,4 @@ def test_analysis_result():
     a = AnalysisResult(run_id="test-run", brand="Notion")
     assert a.mindshare.overall == 0.0
     assert a.sentiment.label == "neutral"
+    assert a.rank_position.weighted_visibility == 0.0

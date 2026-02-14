@@ -6,6 +6,7 @@ export interface AnalysisResult {
   mentionRate: MentionRateScore;
   sentiment: SentimentScore;
   positioning: PositioningScore;
+  rankPosition?: RankPositionScore;
   citations: CitationScore;
   competitorAnalysis: CompetitorAnalysis;
   summary: ExecutiveSummary;
@@ -52,6 +53,17 @@ export interface PositioningScore {
   primaryPosition: string;
   attributes: PositionAttribute[];
   byProvider: Record<string, string>;
+}
+
+export interface RankPositionScore {
+  totalRankedResponses: number;
+  mentionInRankedLists: number;
+  mentionCoverage: number;
+  avgPosition: number;
+  medianPosition: number;
+  top3Rate: number;
+  weightedVisibility: number;
+  byProvider: Record<string, number>;
 }
 
 export interface PositionAttribute {

@@ -15,12 +15,17 @@ from voyage_geo.stages.analysis.analyzers.mention_rate import MentionRateAnalyze
 from voyage_geo.stages.analysis.analyzers.mindshare import MindshareAnalyzer
 from voyage_geo.stages.analysis.analyzers.narrative import NarrativeAnalyzer
 from voyage_geo.stages.analysis.analyzers.positioning import PositioningAnalyzer
+from voyage_geo.stages.analysis.analyzers.rank_position import RankPositionAnalyzer
 from voyage_geo.stages.analysis.analyzers.sentiment import SentimentAnalyzer
 from voyage_geo.storage.filesystem import FileSystemStorage
 from voyage_geo.types.analysis import AnalysisResult, ExecutiveSummary
 from voyage_geo.types.brand import BrandProfile
 from voyage_geo.utils.progress import console, stage_header
-from voyage_geo.utils.text import extract_competitors_with_llm, extract_narratives_with_llm
+from voyage_geo.utils.text import (
+    extract_competitors_with_llm,
+    extract_narratives_with_llm,
+    extract_ranked_brands_with_llm,
+)
 
 logger = structlog.get_logger()
 
@@ -29,6 +34,7 @@ ANALYZER_MAP = {
     "mention-rate": MentionRateAnalyzer,
     "sentiment": SentimentAnalyzer,
     "positioning": PositioningAnalyzer,
+    "rank-position": RankPositionAnalyzer,
     "citation": CitationAnalyzer,
     "competitor": CompetitorAnalyzer,
     "narrative": NarrativeAnalyzer,
@@ -56,6 +62,7 @@ class AnalysisStage(PipelineStage):
         # Extract competitors and narratives from AI responses using the processing provider
         extracted_competitors: list[str] = []
         extracted_claims: list[dict] = []
+        ranked_lists_by_response: dict[str, list[str]] = {}
         valid_results = [r for r in results if not r.error and r.response]
         if valid_results:
             response_texts = [r.response for r in valid_results]
@@ -66,6 +73,22 @@ class AnalysisStage(PipelineStage):
             )
             if extracted_competitors:
                 console.print(f"  [green]Found competitors:[/green] {', '.join(extracted_competitors)}")
+
+            if "rank-position" in analyzers_enabled:
+                candidates = [profile.name] + (extracted_competitors or profile.competitors)
+                response_items = [
+                    (f"{r.provider}:{r.query_id}:{r.iteration}", r.response)
+                    for r in valid_results
+                ]
+                console.print(f"  Extracting rank positions via {self.processing_provider.display_name}...")
+                ranked_lists_by_response = await extract_ranked_brands_with_llm(
+                    response_items,
+                    profile.category,
+                    self.processing_provider,
+                    candidates,
+                )
+                covered = sum(1 for v in ranked_lists_by_response.values() if v)
+                console.print(f"  [green]Detected explicit rankings in {covered} responses[/green]")
 
             if "narrative" in analyzers_enabled:
                 console.print(f"  Extracting narratives via {self.processing_provider.display_name}...")
@@ -87,6 +110,10 @@ class AnalysisStage(PipelineStage):
             # Pass extracted data to analyzers that support it
             if analyzer_name in ("mindshare", "competitor"):
                 result = analyzer_instance.analyze(results, profile, extracted_competitors=extracted_competitors)  # type: ignore[attr-defined]
+            elif analyzer_name == "rank-position":
+                result = analyzer_instance.analyze(
+                    results, profile, ranked_lists_by_response=ranked_lists_by_response
+                )  # type: ignore[attr-defined]
             elif analyzer_name == "narrative":
                 result = analyzer_instance.analyze(results, profile, extracted_claims=extracted_claims)  # type: ignore[attr-defined]
             else:
@@ -100,6 +127,8 @@ class AnalysisStage(PipelineStage):
                 analysis.sentiment = result
             elif analyzer_name == "positioning":
                 analysis.positioning = result
+            elif analyzer_name == "rank-position":
+                analysis.rank_position = result
             elif analyzer_name == "citation":
                 analysis.citations = result
             elif analyzer_name == "competitor":
@@ -132,6 +161,14 @@ class AnalysisStage(PipelineStage):
         sent = analysis.sentiment
         findings.append(f"Overall sentiment is {sent.label} ({sent.overall:.2f}) with {sent.confidence:.0%} confidence")
 
+        rp = analysis.rank_position
+        if rp.total_ranked_responses > 0:
+            findings.append(
+                f"Appears in {rp.mention_in_ranked_lists}/{rp.total_ranked_responses} explicit ranked lists"
+            )
+            if rp.avg_position > 0:
+                findings.append(f"Average explicit list position: #{rp.avg_position:.1f}")
+
         if mr > 0.5:
             strengths.append("Strong presence across AI responses")
         elif mr < 0.2:
@@ -150,6 +187,13 @@ class AnalysisStage(PipelineStage):
             weaknesses.append(f"Ranked #{rank} out of {total} brands — room to improve")
             recommendations.append("Focus on improving brand visibility in AI training data sources")
 
+        if rp.total_ranked_responses > 0:
+            if rp.top3_rate >= 0.5:
+                strengths.append("Frequently placed in top-3 in explicit ranking responses")
+            elif rp.mention_coverage < 0.25:
+                weaknesses.append("Rarely appears in explicit ranked lists")
+                recommendations.append("Publish comparison-oriented content to improve list placement")
+
         if mr < 0.3:
             recommendations.append("Create more authoritative content that AI models can reference")
         if sent.label != "positive":
@@ -165,7 +209,19 @@ class AnalysisStage(PipelineStage):
         if analysis.narrative.brand_negative_count > analysis.narrative.brand_positive_count:
             weaknesses.append("More negative than positive claims in AI narratives")
 
-        score = (mr * 30 + ms * 30 + (sent.overall + 1) / 2 * 20 + (1 / rank if rank > 0 else 0) * 20)
+        positioning_strength = self._positioning_strength(analysis)
+        if rp.total_ranked_responses > 0:
+            rank_visibility = rp.weighted_visibility
+        else:
+            rank_visibility = 1 / rank if rank > 0 else 0
+
+        score = (
+            mr * 28
+            + ms * 22
+            + rank_visibility * 25
+            + ((sent.overall + 1) / 2) * 15
+            + positioning_strength * 10
+        )
         score = min(max(round(score, 1), 0), 100)
 
         headline = f"{profile.name}: {'Strong' if score > 60 else 'Moderate' if score > 30 else 'Weak'} AI visibility ({score}/100)"
@@ -178,3 +234,47 @@ class AnalysisStage(PipelineStage):
             recommendations=recommendations,
             overall_score=score,
         )
+
+    @staticmethod
+    def _positioning_strength(analysis: AnalysisResult) -> float:
+        attrs = analysis.positioning.attributes
+        if not attrs:
+            return 0.5
+
+        positive_terms = {
+            "leader",
+            "popular",
+            "best",
+            "top",
+            "innovative",
+            "reliable",
+            "powerful",
+            "simple",
+            "enterprise",
+            "scalable",
+            "trusted",
+            "fast",
+            "secure",
+            "flexible",
+            "comprehensive",
+            "user-friendly",
+            "modern",
+            "mature",
+            "growing",
+        }
+        negative_terms = {"expensive", "complex", "limited", "outdated", "basic"}
+
+        weighted_total = 0.0
+        freq_total = 0
+        for attr in attrs:
+            polarity = 1.0 if attr.attribute in positive_terms else -1.0 if attr.attribute in negative_terms else 0.0
+            sentiment_conf = (attr.sentiment + 1) / 2  # -1..1 -> 0..1
+            weighted_total += polarity * sentiment_conf * attr.frequency
+            freq_total += attr.frequency
+
+        if freq_total == 0:
+            return 0.5
+
+        normalized = weighted_total / freq_total  # roughly -1..1
+        normalized = max(min(normalized, 1.0), -1.0)
+        return (normalized + 1) / 2

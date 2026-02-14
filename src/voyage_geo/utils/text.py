@@ -196,6 +196,172 @@ JSON array of "{category}" brand names only:"""
     return all_names[:max_brands]
 
 
+_RANKING_SIGNAL_PATTERNS = [
+    r"(?im)^\s*\d+\s*[\.\)]\s+\S+",
+    r"(?im)^\s*[-*]\s+\*\*?\w+",
+    r"(?i)\btop\s+\d+\b",
+    r"(?i)\brank(?:ed|ing)?\b",
+    r"(?i)\btier\b",
+    r"(?i)\bS-Tier\b|\bA-Tier\b|\bB-Tier\b|\bC-Tier\b",
+]
+
+
+def likely_contains_ranking_signal(text: str) -> bool:
+    return any(re.search(pat, text) for pat in _RANKING_SIGNAL_PATTERNS)
+
+
+def _normalize_entity_name(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", name.lower())
+
+
+def _build_candidate_lookup(candidate_brands: list[str]) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    by_lower = {c.lower(): c for c in candidate_brands}
+    by_norm = {_normalize_entity_name(c): c for c in candidate_brands}
+
+    # Build a simple acronym map for multi-word brands (e.g., "New Enterprise Associates" -> "nea")
+    acronym_counts: dict[str, int] = {}
+    acronym_to_brand: dict[str, str] = {}
+    for brand in candidate_brands:
+        words = [w for w in re.split(r"[^A-Za-z0-9]+", brand) if w]
+        if len(words) < 2:
+            continue
+        acronym = "".join(w[0].lower() for w in words if w and w[0].isalnum())
+        if 2 <= len(acronym) <= 6:
+            acronym_counts[acronym] = acronym_counts.get(acronym, 0) + 1
+            acronym_to_brand[acronym] = brand
+
+    unique_acronyms = {a: b for a, b in acronym_to_brand.items() if acronym_counts.get(a, 0) == 1}
+    return by_lower, by_norm, unique_acronyms
+
+
+def _canonicalize_brand_name(
+    raw_name: str,
+    by_lower: dict[str, str],
+    by_norm: dict[str, str],
+    by_acronym: dict[str, str],
+) -> str | None:
+    s = raw_name.strip()
+    if not s:
+        return None
+
+    lower = s.lower()
+    if lower in by_lower:
+        return by_lower[lower]
+
+    norm = _normalize_entity_name(s)
+    if norm in by_norm:
+        return by_norm[norm]
+
+    if lower in by_acronym:
+        return by_acronym[lower]
+
+    # Fuzzy containment fallback for small naming variants
+    for cand_lower, canonical in by_lower.items():
+        if lower in cand_lower or cand_lower in lower:
+            return canonical
+
+    return None
+
+
+async def extract_ranked_brands_with_llm(
+    response_items: list[tuple[str, str]],
+    category: str,
+    provider: BaseProvider,
+    candidate_brands: list[str],
+    *,
+    batch_size: int = 8,
+    max_brands_per_response: int = 15,
+) -> dict[str, list[str]]:
+    """Extract ordered ranked brands from responses using batched LLM calls.
+
+    Returns a mapping response_id -> ordered list of canonical brand names.
+    Only responses with ranking/tier signals are sent to the LLM.
+    """
+    if not response_items or not candidate_brands:
+        return {}
+
+    by_lower, by_norm, by_acronym = _build_candidate_lookup(candidate_brands)
+
+    # Keep output keys stable for all responses
+    ranked_map: dict[str, list[str]] = {rid: [] for rid, _ in response_items}
+
+    # Only attempt extraction on likely ranking responses
+    likely_ranked = [(rid, txt) for rid, txt in response_items if likely_contains_ranking_signal(txt)]
+    if not likely_ranked:
+        return ranked_map
+
+    candidates_block = "\n".join(f"- {c}" for c in candidate_brands)
+
+    for i in range(0, len(likely_ranked), batch_size):
+        batch = likely_ranked[i : i + batch_size]
+        response_block_parts = []
+        for rid, text in batch:
+            response_block_parts.append(
+                f"RESPONSE_ID: {rid}\n{text[:1800]}"
+            )
+        response_block = "\n\n---\n\n".join(response_block_parts)
+
+        prompt = f"""You are extracting explicit ranking order from AI responses in category "{category}".
+
+CANDIDATE BRANDS (canonical names):
+{candidates_block}
+
+TASK:
+- For each RESPONSE_ID, return the ordered brands ONLY when the response explicitly ranks, tiers, or orders brands.
+- If no explicit ranking/tier/order exists, return [] for that RESPONSE_ID.
+- Keep order exactly as written in the response (best/highest first).
+- Normalize aliases and abbreviations to canonical candidate names whenever possible.
+- Use only candidate brands in outputs.
+- Return at most {max_brands_per_response} brands per response.
+- Return ONLY a valid JSON object of shape:
+  {{"response_id": ["Brand A", "Brand B"], "...": []}}
+
+RESPONSES:
+{response_block}
+
+JSON object:"""
+
+        try:
+            resp = await provider.query(prompt)
+            text = resp.text.strip()
+            if "```" in text:
+                text = text.split("```")[1]
+                if text.startswith("json"):
+                    text = text[4:]
+                text = text.strip()
+
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1:
+                text = text[start : end + 1]
+
+            parsed = json.loads(text)
+            if not isinstance(parsed, dict):
+                continue
+
+            for rid, raw_brands in parsed.items():
+                if not isinstance(rid, str) or not isinstance(raw_brands, list):
+                    continue
+
+                canonical_list: list[str] = []
+                seen: set[str] = set()
+                for raw_name in raw_brands:
+                    if not isinstance(raw_name, str):
+                        continue
+                    canonical = _canonicalize_brand_name(raw_name, by_lower, by_norm, by_acronym)
+                    if canonical and canonical not in seen:
+                        seen.add(canonical)
+                        canonical_list.append(canonical)
+                    if len(canonical_list) >= max_brands_per_response:
+                        break
+
+                ranked_map[rid] = canonical_list
+        except Exception as exc:
+            logger.warning("llm_rank_position_extraction_failed", batch=i // batch_size + 1, error=str(exc))
+
+    return ranked_map
+
+
 async def extract_narratives_with_llm(
     responses: list[str],
     target_brand: str,

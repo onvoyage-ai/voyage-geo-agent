@@ -51,7 +51,7 @@ export const DEFAULT_CONFIG: VoyageGeoConfig = {
     categories: ['recommendation', 'comparison', 'best-of', 'how-to', 'review', 'alternative', 'general'],
   },
   analysis: {
-    analyzers: ['mindshare', 'mention-rate', 'sentiment', 'positioning', 'citation', 'competitor'],
+    analyzers: ['mindshare', 'mention-rate', 'sentiment', 'positioning', 'rank-position', 'citation', 'competitor'],
   },
   report: {
     formats: ['html', 'json'],

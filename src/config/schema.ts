@@ -55,6 +55,7 @@ export const analysisConfigSchema = z.object({
     'mention-rate',
     'sentiment',
     'positioning',
+    'rank-position',
     'citation',
     'competitor',
   ])).default([
@@ -62,6 +63,7 @@ export const analysisConfigSchema = z.object({
     'mention-rate',
     'sentiment',
     'positioning',
+    'rank-position',
     'citation',
     'competitor',
   ]),
