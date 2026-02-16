@@ -148,4 +148,4 @@ After creating the files, the user can run `/geo-run` or `/geo-leaderboard` as s
 ## Links
 
 - PyPI: https://pypi.org/project/voyage-geo/
-- GitHub: https://github.com/Onvoyage-AI/voyage-geo-agent
+- GitHub: https://github.com/onvoyage-ai/voyage-geo-agent

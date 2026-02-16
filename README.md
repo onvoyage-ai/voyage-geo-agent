@@ -51,7 +51,7 @@ pip install voyage-geo
 Or install from source:
 
 ```bash
-git clone https://github.com/Onvoyage-AI/voyage-geo-agent.git
+git clone https://github.com/onvoyage-ai/voyage-geo-agent.git
 cd voyage-geo-agent
 pip install -e .
 ```
@@ -83,7 +83,7 @@ Voyage GEO ships 8 interactive skills that work with [Claude Code](https://docs.
 Tell your agent to fetch and follow the install instructions:
 
 ```
-https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/AGENTS.md
+https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/AGENTS.md
 ```
 
 The agent will `pip install voyage-geo` and create the skill files automatically. Works with Claude Code, OpenClaw, and any agent that supports `SKILL.md`.

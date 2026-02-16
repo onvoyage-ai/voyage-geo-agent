@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Install Voyage GEO skills for Claude Code or OpenClaw agents
-# Usage: curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/install-skills.sh | bash
 set -euo pipefail
 
-REPO="https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main"
+REPO="https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main"
 SKILLS=(geo-run geo-leaderboard)
 
 # Detect target: OpenClaw global, or Claude Code project-local

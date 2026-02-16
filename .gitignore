@@ -9,9 +9,6 @@ build/
 .venv/
 venv/
 
-# Node (legacy)
-node_modules/
-*.tsbuildinfo
 
 # Environment
 .env

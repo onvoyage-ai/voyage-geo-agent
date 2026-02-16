@@ -5,7 +5,7 @@ Thanks for your interest in contributing! Here's how to get started.
 ## Setup
 
 ```bash
-git clone https://github.com/Onvoyage-AI/voyage-geo-agent.git
+git clone https://github.com/onvoyage-ai/voyage-geo-agent.git
 cd voyage-geo-agent
 pip install -e ".[dev]"
 ```
@@ -35,7 +35,7 @@ pip install -e ".[dev]"
 - **New AI providers** — see [docs/providers.md](./docs/providers.md)
 - **New analyzers** — see [docs/analyzers.md](./docs/analyzers.md)
 - **New query strategies** — see [docs/query-strategies.md](./docs/query-strategies.md)
-- **Bug fixes** — check [Issues](https://github.com/Onvoyage-AI/voyage-geo-agent/issues)
+- **Bug fixes** — check [Issues](https://github.com/onvoyage-ai/voyage-geo-agent/issues)
 - **Report improvements** — better charts, new export formats
 
 ## Reporting Bugs
