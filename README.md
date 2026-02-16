@@ -91,6 +91,16 @@ Auto-detects your platform:
 
 Custom target: `voyage-geo install-skills --target /path/to/skills`
 
+### Give to Your Agent
+
+Point your AI agent at the install instructions:
+
+```
+https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/AGENTS.md
+```
+
+Or tell your agent: *"Install voyage-geo: `pip install voyage-geo && voyage-geo install-skills`"*
+
 ### Available Skills
 
 | Command | Description |

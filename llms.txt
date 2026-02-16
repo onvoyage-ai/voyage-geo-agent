@@ -1,0 +1,17 @@
+# Voyage GEO
+
+> SEO analytics for AI search engines. Measures how ChatGPT, Claude, Gemini, Perplexity, DeepSeek, Grok, and Llama reference your brand.
+
+## Install
+
+pip install voyage-geo
+voyage-geo install-skills
+
+## Agent Instructions
+
+https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/AGENTS.md
+
+## Docs
+
+https://github.com/Onvoyage-AI/voyage-geo-agent/blob/main/README.md
+https://github.com/Onvoyage-AI/voyage-geo-agent/blob/main/CLAUDE.md
