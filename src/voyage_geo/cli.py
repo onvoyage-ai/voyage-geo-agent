@@ -129,6 +129,14 @@ def list_providers(
 
     console.print(table)
 
+    # Show processing provider status
+    proc = config.processing
+    if proc.api_key:
+        console.print(f"\nProcessing provider: [bold]{proc.provider}[/bold] ({proc.model}) — [green]configured[/green]")
+    else:
+        console.print(f"\nProcessing provider: [bold]{proc.provider}[/bold] ({proc.model}) — [red]NOT CONFIGURED[/red]")
+        console.print("  Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY")
+
     if test:
         console.print("\nRunning health checks...")
         from voyage_geo.providers.registry import ProviderRegistry
@@ -169,12 +177,12 @@ def research(
     proc = config.processing
     if not proc.api_key:
         console.print(f"[red]No API key found for processing provider '{proc.provider}'.[/red]")
-        console.print("Set the appropriate env var (e.g. ANTHROPIC_API_KEY) or configure processing.api_key.")
+        console.print("Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY")
         raise typer.Exit(1)
 
     proc_config = ProviderConfig(
         name=proc.provider, model=proc.model, api_key=proc.api_key,
-        max_tokens=proc.max_tokens,
+        base_url=proc.base_url, max_tokens=proc.max_tokens,
     )
     proc_provider = create_provider(proc.provider, proc_config)
     storage = FileSystemStorage(config.output_dir)

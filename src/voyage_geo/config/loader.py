@@ -23,7 +23,22 @@ ENV_KEY_MAP = {
     "deepseek": "OPENROUTER_API_KEY",
     "grok": "OPENROUTER_API_KEY",
     "llama": "OPENROUTER_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+    "mistral": "OPENROUTER_API_KEY",
+    "cohere": "OPENROUTER_API_KEY",
+    "qwen": "OPENROUTER_API_KEY",
+    "kimi": "OPENROUTER_API_KEY",
+    "glm": "OPENROUTER_API_KEY",
 }
+
+# Fallback chain for auto-detecting a processing provider (by capability).
+# Each entry: (provider_name, model, env_key, base_url_or_None)
+_PROCESSING_FALLBACKS = [
+    ("anthropic", "claude-opus-4-6", "ANTHROPIC_API_KEY", None),
+    ("openai", "gpt-5-mini", "OPENAI_API_KEY", None),
+    ("google", "gemini-3-flash-preview", "GOOGLE_API_KEY", None),
+    ("chatgpt", "openai/gpt-5-mini", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
+]
 
 
 def load_config(
@@ -68,6 +83,18 @@ def load_config(
         processing_env_key = ENV_KEY_MAP.get(config.processing.provider)
         if processing_env_key:
             config.processing.api_key = os.getenv(processing_env_key)
+
+    # Auto-fallback: if the default provider has no key AND the user didn't
+    # explicitly set PROCESSING_PROVIDER, try the fallback chain.
+    if not config.processing.api_key and not env_proc_provider:
+        for prov, model, env_key, base_url in _PROCESSING_FALLBACKS:
+            key = os.getenv(env_key)
+            if key:
+                config.processing.provider = prov
+                config.processing.model = model
+                config.processing.api_key = key
+                config.processing.base_url = base_url
+                break
 
     return config
 

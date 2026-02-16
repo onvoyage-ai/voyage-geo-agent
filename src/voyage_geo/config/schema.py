@@ -63,6 +63,7 @@ class ProcessingConfig(BaseModel):
     provider: str = "anthropic"
     model: str = "claude-opus-4-6"
     api_key: str | None = None
+    base_url: str | None = None
     max_tokens: int = 4096
     temperature: float | None = None
 

@@ -43,7 +43,12 @@ Ask: "What category do you want to rank?" Examples: "top vc firms", "best CRM to
 
 ## Step 2: Check Providers
 
-Run `python3 -m voyage_geo providers` silently. If at least one has an API key, proceed.
+Run `python3 -m voyage_geo providers` silently.
+
+1. **Execution providers:** If at least one has an API key, proceed.
+2. **Processing provider:** Check the "Processing provider" line at the bottom.
+   - If it says "configured" — good, proceed.
+   - If it says "NOT CONFIGURED" — the user needs at least one of: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or `OPENROUTER_API_KEY`. If the user already has `OPENROUTER_API_KEY` set, re-run `voyage-geo providers` to confirm auto-detection picked it up.
 
 ## Step 3: Generate Queries (stop for review)
 

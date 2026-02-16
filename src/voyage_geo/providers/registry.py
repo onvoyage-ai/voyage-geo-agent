@@ -24,6 +24,7 @@ def create_provider(name: str, config: ProviderConfig) -> BaseProvider:
         "anthropic": AnthropicProvider,
         "google": GoogleProvider,
         "perplexity": PerplexityProvider,
+        "openrouter": OpenRouterProvider,
         "chatgpt": OpenRouterProvider,
         "gemini": OpenRouterProvider,
         "claude": OpenRouterProvider,
@@ -31,6 +32,11 @@ def create_provider(name: str, config: ProviderConfig) -> BaseProvider:
         "deepseek": OpenRouterProvider,
         "grok": OpenRouterProvider,
         "llama": OpenRouterProvider,
+        "mistral": OpenRouterProvider,
+        "cohere": OpenRouterProvider,
+        "qwen": OpenRouterProvider,
+        "kimi": OpenRouterProvider,
+        "glm": OpenRouterProvider,
     }
 
     factory = factories.get(name)

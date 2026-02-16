@@ -73,8 +73,11 @@ Do NOT proceed until you have at least the brand name.
 4. After the user picks models, check which API keys are missing.
    - If keys are missing, ask the user to provide them.
    - Write keys to .env file. NEVER echo keys back to the user.
-5. Verify with voyage-geo providers --test
-6. Confirm the final model list with the user before proceeding.
+5. Check the Processing provider line in the voyage-geo providers output.
+   - If it says "configured" — good, proceed.
+   - If it says "NOT CONFIGURED" — the user needs at least one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY.
+6. Verify with voyage-geo providers --test
+7. Confirm the final model list with the user before proceeding.
 
 ## Step 3: Confirm & Run
 
@@ -135,7 +138,12 @@ Ask: "What category do you want to rank?" Examples: "top vc firms", "best CRM to
 
 ## Step 2: Check Providers
 
-Run voyage-geo providers silently. If at least one has an API key, proceed.
+Run voyage-geo providers silently.
+
+1. Execution providers: If at least one has an API key, proceed.
+2. Processing provider: Check the "Processing provider" line at the bottom.
+   - If it says "configured" — good, proceed.
+   - If it says "NOT CONFIGURED" — the user needs at least one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY. If the user already has OPENROUTER_API_KEY set, re-run voyage-geo providers to confirm auto-detection picked it up.
 
 ## Step 3: Generate Queries (stop for review)
 

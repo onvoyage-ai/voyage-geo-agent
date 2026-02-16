@@ -68,8 +68,12 @@ Do NOT proceed until you have at least the brand name.
      - Google: https://aistudio.google.com/apikey
      - Perplexity: https://docs.perplexity.ai/
    - Write keys to `.env` file. NEVER echo keys back to the user.
-5. Verify with `voyage-geo providers --test`
-6. Confirm the final model list with the user before proceeding.
+5. Check the **Processing provider** line in the `voyage-geo providers` output.
+   - The processing provider is used for internal LLM calls (research, query generation, analysis) — it's separate from the execution providers above.
+   - If it says "configured", you're good — no action needed.
+   - If it says "NOT CONFIGURED", the user needs at least one of: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, or `OPENROUTER_API_KEY`. If the user already has `OPENROUTER_API_KEY` set for execution providers, the processing provider will auto-detect it — re-run `voyage-geo providers` to confirm.
+6. Verify with `voyage-geo providers --test`
+7. Confirm the final model list with the user before proceeding.
 
 ## Step 3: Confirm & Run
 

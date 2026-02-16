@@ -19,6 +19,7 @@ import structlog
 
 from voyage_geo.config.schema import ProviderConfig, VoyageGeoConfig
 from voyage_geo.core.context import RunContext
+from voyage_geo.core.errors import GeoConfigError
 from voyage_geo.providers.registry import ProviderRegistry, create_provider
 from voyage_geo.stages.analysis.stage import ANALYZER_MAP, AnalysisStage
 from voyage_geo.stages.execution.stage import ExecutionStage
@@ -77,14 +78,15 @@ class LeaderboardEngine:
     def _create_processing_provider(self):
         proc = self.config.processing
         if not proc.api_key:
-            raise RuntimeError(
+            raise GeoConfigError(
                 f"No API key found for processing provider '{proc.provider}'. "
-                f"Set the appropriate env var (e.g. ANTHROPIC_API_KEY) or configure processing.api_key."
+                f"Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY"
             )
         provider_config = ProviderConfig(
             name=proc.provider,
             model=proc.model,
             api_key=proc.api_key,
+            base_url=proc.base_url,
             max_tokens=proc.max_tokens,
         )
         return create_provider(proc.provider, provider_config)
