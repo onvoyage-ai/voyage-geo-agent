@@ -229,6 +229,11 @@ python3 -m ruff check src/ tests/
 python3 -m mypy src/voyage_geo/ --ignore-missing-imports
 ```
 
+##Sample report
+<img width="1716" height="987" alt="Screenshot 2026-02-16 at 11 32 37 AM" src="https://github.com/user-attachments/assets/7c502fb5-e9ee-4d1c-b370-66709d4f38fa" />
+<img width="1079" height="451" alt="Screenshot 2026-02-16 at 11 32 52 AM" src="https://github.com/user-attachments/assets/639794e3-d414-4d9f-96b5-c92664ed24c4" />
+
+
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
