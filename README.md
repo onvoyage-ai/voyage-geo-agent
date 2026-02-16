@@ -105,14 +105,8 @@ Or tell your agent: *"Install voyage-geo: `pip install voyage-geo && voyage-geo 
 
 | Command | Description |
 |---------|-------------|
-| `/geo-setup` | First-time onboarding. Installs deps, configures API keys, verifies everything works. |
-| `/geo-run` | Full GEO analysis. The agent interviews you about your brand, runs the pipeline, reviews results. |
-| `/geo-research` | Deep-dive brand research with web search and site scraping. |
-| `/geo-explore` | Explore past analysis results interactively. |
-| `/geo-report` | Generate shareable reports from existing runs. |
-| `/geo-leaderboard` | Category-wide brand comparison. Ranks all brands by AI visibility. |
-| `/geo-add-provider` | Add a new AI model provider with guided implementation. |
-| `/geo-debug` | Diagnose and fix failed runs. |
+| `/geo-run` | Full GEO analysis — setup, brand research, query generation, execution, analysis, and reporting |
+| `/geo-leaderboard` | Category-wide brand comparison — ranks all brands by AI visibility |
 
 ## CLI Reference
 

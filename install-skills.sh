@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO="https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main"
-SKILLS=(geo-setup geo-run geo-research geo-explore geo-report geo-leaderboard geo-add-provider geo-debug)
+SKILLS=(geo-run geo-leaderboard)
 
 # Detect target: OpenClaw global, or Claude Code project-local
 if [ -d "$HOME/.openclaw" ]; then
@@ -27,7 +27,6 @@ done
 echo ""
 echo "Installed ${#SKILLS[@]} skills."
 echo ""
-echo "Commands: /geo-setup  /geo-run  /geo-research  /geo-explore"
-echo "          /geo-report  /geo-leaderboard  /geo-add-provider  /geo-debug"
+echo "Commands: /geo-run  /geo-leaderboard"
 echo ""
 echo "Requires: pip install voyage-geo"

@@ -14,18 +14,12 @@ pip install voyage-geo
 voyage-geo install-skills
 ```
 
-This auto-detects your platform (OpenClaw, Claude Code) and installs 8 skills:
+This auto-detects your platform (OpenClaw, Claude Code) and installs 2 skills:
 
 | Command | What it does |
 |---------|-------------|
-| /geo-setup | First-time onboarding — install deps, configure API keys |
-| /geo-run | Full GEO analysis — research brand, generate queries, run against AI models, analyze, report |
-| /geo-research | Deep-dive brand research — web scraping, competitor identification |
-| /geo-explore | Explore past analysis results interactively |
-| /geo-report | Generate shareable reports (HTML, CSV, Markdown, JSON) |
+| /geo-run | Full GEO analysis — setup, brand research, query generation, run against AI models, analyze, report |
 | /geo-leaderboard | Category-wide brand comparison — rank all brands by AI visibility |
-| /geo-add-provider | Add a new AI model provider |
-| /geo-debug | Diagnose and fix failed runs |
 
 ## Step 3: Configure API keys
 
@@ -42,7 +36,7 @@ Get an OpenRouter key at https://openrouter.ai/keys
 
 ## Step 4: Run
 
-Start with `/geo-setup` or run directly:
+Use `/geo-run` to analyze a brand, or run directly:
 
 ```bash
 voyage-geo run -b "BrandName" -w "https://brand.com" --no-interactive
@@ -52,4 +46,3 @@ voyage-geo run -b "BrandName" -w "https://brand.com" --no-interactive
 
 - PyPI: https://pypi.org/project/voyage-geo/
 - GitHub: https://github.com/Onvoyage-AI/voyage-geo-agent
-- Docs: https://github.com/Onvoyage-AI/voyage-geo-agent/blob/main/README.md

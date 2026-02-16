@@ -13,18 +13,12 @@ pip install voyage-geo
 voyage-geo install-skills
 ```
 
-The primary interface is through slash commands:
+Two slash commands:
 
-- `/geo-setup` — First-time onboarding. Installs deps, configures API keys, verifies everything works.
-- `/geo-run` — Full GEO analysis. Claude interviews you about your brand, runs the pipeline, and walks you through results.
-- `/geo-research` — Deep-dive brand research. Claude asks about your brand, scrapes your site, identifies competitors.
-- `/geo-explore` — Explore past analysis results interactively. Claude explains findings conversationally.
-- `/geo-report` — Generate shareable reports (HTML, CSV, Markdown, JSON) from existing runs.
-- `/geo-add-provider` — Add a new AI model provider with guided implementation.
-- `/geo-debug` — Diagnose and fix failed or problematic runs.
+- `/geo-run` — Full GEO analysis. Handles setup, brand research, query generation, execution, analysis, and reporting.
 - `/geo-leaderboard` — Category-wide brand comparison. Ranks all brands in a category by AI visibility.
 
-Start with `/geo-setup` if this is your first time, or `/geo-run` if you're already configured.
+Start with `/geo-run`.
 
 ## Architecture
 

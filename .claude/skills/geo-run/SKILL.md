@@ -1,6 +1,6 @@
 ---
 name: geo-run
-description: Run a full GEO analysis — Claude Code guides you through brand research, query generation, execution, analysis, and reporting interactively
+description: Run a full GEO analysis — guides you through setup, brand research, query generation, execution, analysis, and reporting
 user_invocable: true
 ---
 
@@ -11,15 +11,16 @@ You are an AI brand analyst running a Generative Engine Optimization audit. Guid
 ## CLI Reference
 
 ```
-python3 -m voyage_geo run --brand "<name>" --website "<url>" --providers openai,anthropic,google --formats html,json,csv,markdown
-python3 -m voyage_geo providers          # list configured providers
-python3 -m voyage_geo providers --test   # health check providers
+pip install voyage-geo                     # install if needed
+voyage-geo providers                       # list configured providers
+voyage-geo providers --test                # health check providers
+voyage-geo run -b "<name>" -w "<url>" -p chatgpt,gemini,claude -f html,json,csv,markdown
 ```
 
 Flags for `run`:
 - `--brand / -b` (required) — brand name
 - `--website / -w` — brand website URL
-- `--providers / -p` — comma-separated provider names (default: openai,anthropic,google,perplexity)
+- `--providers / -p` — comma-separated provider names (default: all via OpenRouter)
 - `--queries / -q` — number of queries (default: 20)
 - `--iterations / -i` — iterations per query (default: 1)
 - `--formats / -f` — report formats (default: html,json)
@@ -36,16 +37,16 @@ Ask the user:
 
 Do NOT proceed until you have at least the brand name.
 
-## Step 2: Check Provider Setup
+## Step 2: Check Setup
 
-Run `python3 -m voyage_geo providers` to see which API keys are configured.
+Run `voyage-geo providers` to see which API keys are configured.
 
-If no providers are configured, trigger the onboarding flow:
-- Ask the user which AI models they want to test against (OpenAI, Anthropic, Google, Perplexity)
-- Help them set up API keys in `.env`
-- Verify with `python3 -m voyage_geo providers --test`
-
-Tell the user which providers are ready and which are missing keys.
+If no providers are configured:
+- Check if `voyage-geo` is installed. If not: `pip install voyage-geo`
+- Ask the user to set up at least one API key. Recommended: OpenRouter (one key for all models) at https://openrouter.ai/keys
+- Or individual keys: OpenAI (https://platform.openai.com/api-keys), Anthropic (https://console.anthropic.com/), Google (https://aistudio.google.com/apikey)
+- Write keys to `.env` file. NEVER echo keys back to the user.
+- Verify with `voyage-geo providers --test`
 
 ## Step 3: Confirm & Run
 
@@ -57,7 +58,7 @@ Summarize the analysis plan:
 
 Once confirmed, run:
 ```bash
-python3 -m voyage_geo run -b "<name>" -w "<url>" -p <list> -q <n> -f html,json,csv,markdown
+voyage-geo run -b "<name>" -w "<url>" -p <list> -q <n> -f html,json,csv,markdown
 ```
 
 ## Step 4: Present Results
@@ -74,8 +75,7 @@ After the run completes:
    - What themes/attributes AI models associate with the brand (from `analysis.narrative.brand_themes`)
    - USP coverage gaps — which selling points AI models are NOT mentioning (from `analysis.narrative.gaps`)
    - How the brand's narrative compares to competitors (from `analysis.narrative.competitor_themes`)
-   - E.g. "AI models talk about your security and features, but never mention your AI-powered expense management"
-5. Highlight the top recommendations (including narrative gap recommendations)
+5. Highlight the top recommendations
 6. Tell them where the HTML report is: `data/runs/<run-id>/reports/report.html`
 7. Ask "Want to dig deeper into any of these findings?"
 

@@ -439,10 +439,7 @@ def install_skills(
         import urllib.request
 
         base = "https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/.claude/skills"
-        skills = [
-            "geo-setup", "geo-run", "geo-research", "geo-explore",
-            "geo-report", "geo-leaderboard", "geo-add-provider", "geo-debug",
-        ]
+        skills = ["geo-run", "geo-leaderboard"]
         console.print(f"Installing skills to [bold]{skill_dir}[/bold] ...\n")
         for name in skills:
             dest = skill_dir / name
@@ -461,8 +458,7 @@ def install_skills(
                 console.print(f"  [green]+[/green] {src.name}")
 
     console.print(f"\n[bold green]Done![/bold green] Skills installed to {skill_dir}")
-    console.print("\nCommands: /geo-setup  /geo-run  /geo-research  /geo-explore")
-    console.print("          /geo-report  /geo-leaderboard  /geo-add-provider  /geo-debug")
+    console.print("\nCommands: /geo-run  /geo-leaderboard")
 
 
 @app.command()
