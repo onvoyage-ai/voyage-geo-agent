@@ -9,7 +9,8 @@ Voyage GEO is an open source GEO (Generative Engine Optimization) tool, designed
 Skills work with Claude Code, OpenClaw, and any agent supporting `SKILL.md`. Install with:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh | bash
+pip install voyage-geo
+voyage-geo install-skills
 ```
 
 The primary interface is through slash commands:
