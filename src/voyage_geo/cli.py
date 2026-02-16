@@ -174,7 +174,7 @@ def research(
 
     proc_config = ProviderConfig(
         name=proc.provider, model=proc.model, api_key=proc.api_key,
-        max_tokens=proc.max_tokens, temperature=proc.temperature,
+        max_tokens=proc.max_tokens,
     )
     proc_provider = create_provider(proc.provider, proc_config)
     storage = FileSystemStorage(config.output_dir)

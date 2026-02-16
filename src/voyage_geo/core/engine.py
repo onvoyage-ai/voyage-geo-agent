@@ -61,7 +61,6 @@ class VoyageGeoEngine:
             model=proc.model,
             api_key=proc.api_key,
             max_tokens=proc.max_tokens,
-            temperature=proc.temperature,
         )
         provider = create_provider(proc.provider, provider_config)
         logger.info("processing.provider_created", provider=proc.provider, model=proc.model)

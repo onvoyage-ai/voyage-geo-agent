@@ -12,7 +12,7 @@ class ProviderConfig(BaseModel):
     model: str | None = None
     base_url: str | None = None
     max_tokens: int | None = None
-    temperature: float = 0.7
+    temperature: float | None = None
     rate_limit_rpm: int = 60
 
 
@@ -64,7 +64,7 @@ class ProcessingConfig(BaseModel):
     model: str = "claude-opus-4-6"
     api_key: str | None = None
     max_tokens: int = 4096
-    temperature: float = 0.7
+    temperature: float | None = None
 
 
 class ReportConfig(BaseModel):

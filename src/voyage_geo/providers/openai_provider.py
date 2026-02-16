@@ -26,8 +26,9 @@ class OpenAIProvider(BaseProvider):
             kwargs: dict = {
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": self.config.temperature,
             }
+            if self.config.temperature is not None:
+                kwargs["temperature"] = self.config.temperature
             if self.config.max_tokens is not None:
                 kwargs["max_tokens"] = self.config.max_tokens
             response = await self.client.chat.completions.create(**kwargs)

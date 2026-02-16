@@ -24,7 +24,9 @@ class GoogleProvider(BaseProvider):
         model = self.config.model or "gemini-3-flash-preview"
         start = time.perf_counter()
         try:
-            gen_config: dict = {"temperature": self.config.temperature}
+            gen_config: dict = {}
+            if self.config.temperature is not None:
+                gen_config["temperature"] = self.config.temperature
             if self.config.max_tokens is not None:
                 gen_config["max_output_tokens"] = self.config.max_tokens
             response = await self.client.aio.models.generate_content(

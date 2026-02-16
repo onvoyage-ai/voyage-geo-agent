@@ -86,7 +86,6 @@ class LeaderboardEngine:
             model=proc.model,
             api_key=proc.api_key,
             max_tokens=proc.max_tokens,
-            temperature=proc.temperature,
         )
         return create_provider(proc.provider, provider_config)
 
