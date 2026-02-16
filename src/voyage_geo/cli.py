@@ -410,57 +410,6 @@ def runs(
     console.print(table)
 
 
-@app.command(name="install-skills")
-def install_skills(
-    target: str = typer.Option(
-        "",
-        "--target",
-        "-t",
-        help="Target directory (default: auto-detect OpenClaw or Claude Code)",
-    ),
-) -> None:
-    """Install GEO skills for Claude Code or OpenClaw agents."""
-    import shutil
-    from importlib.resources import files
-    from pathlib import Path
-
-    # Auto-detect target
-    if target:
-        skill_dir = Path(target)
-    elif Path.home().joinpath(".openclaw").is_dir():
-        skill_dir = Path.home() / ".openclaw" / "skills"
-    else:
-        skill_dir = Path(".claude") / "skills"
-
-    # Source skills bundled in the package
-    source_dir = Path(str(files("voyage_geo"))) / ".." / ".." / ".claude" / "skills"
-    # Fallback: fetch from GitHub if running from pip install (source_dir won't exist)
-    if not source_dir.is_dir():
-        import urllib.request
-
-        base = "https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/.claude/skills"
-        skills = ["geo-run", "geo-leaderboard"]
-        console.print(f"Installing skills to [bold]{skill_dir}[/bold] ...\n")
-        for name in skills:
-            dest = skill_dir / name
-            dest.mkdir(parents=True, exist_ok=True)
-            url = f"{base}/{name}/SKILL.md"
-            urllib.request.urlretrieve(url, dest / "SKILL.md")
-            console.print(f"  [green]+[/green] {name}")
-    else:
-        source_dir = source_dir.resolve()
-        console.print(f"Installing skills to [bold]{skill_dir}[/bold] ...\n")
-        for src in sorted(source_dir.iterdir()):
-            if src.is_dir() and src.name.startswith("geo-"):
-                dest = skill_dir / src.name
-                dest.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src / "SKILL.md", dest / "SKILL.md")
-                console.print(f"  [green]+[/green] {src.name}")
-
-    console.print(f"\n[bold green]Done![/bold green] Skills installed to {skill_dir}")
-    console.print("\nCommands: /geo-run  /geo-leaderboard")
-
-
 @app.command()
 def version() -> None:
     """Show version."""

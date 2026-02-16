@@ -81,15 +81,12 @@ Voyage GEO ships 8 interactive skills that work with [Claude Code](https://docs.
 ### Install Skills
 
 ```bash
-pip install voyage-geo
-voyage-geo install-skills
+bash <(curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh)
 ```
 
 Auto-detects your platform:
 - **OpenClaw** — installs to `~/.openclaw/skills/`
 - **Claude Code** — installs to `.claude/skills/` in your project
-
-Custom target: `voyage-geo install-skills --target /path/to/skills`
 
 ### Give to Your Agent
 
@@ -98,8 +95,6 @@ Point your AI agent at the install instructions:
 ```
 https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/AGENTS.md
 ```
-
-Or tell your agent: *"Install voyage-geo: `pip install voyage-geo && voyage-geo install-skills`"*
 
 ### Available Skills
 
