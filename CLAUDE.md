@@ -71,7 +71,14 @@ python3 -m voyage_geo runs                 # list past runs
 python3 -m voyage_geo version
 ```
 
-**Important:** Always use `python3 -m voyage_geo`, not `voyage-geo` or `node dist/cli.js`. The flag for report formats is `--formats` (not `--format`). The `providers` subcommand has no `--list` flag — just run it bare.
+**Important:** Use `voyage-geo` or `python3 -m voyage_geo` to run the CLI. The flag for report formats is `--formats` (not `--format`). The `providers` subcommand has no `--list` flag — just run it bare.
+
+## Install
+
+```bash
+pip install voyage-geo          # From PyPI
+pip install -e ".[dev]"         # From source with dev dependencies
+```
 
 ## Build & Test
 

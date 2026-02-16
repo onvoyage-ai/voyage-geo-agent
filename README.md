@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://pypi.org/project/voyage-geo/"><img src="https://img.shields.io/pypi/v/voyage-geo?style=flat-square&color=7ECBC0" alt="PyPI"/></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-7ECBC0?style=flat-square" alt="MIT License"/></a>
   <img src="https://img.shields.io/badge/python-3.11+-7ECBC0?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+"/>
   <img src="https://img.shields.io/badge/async-throughout-7ECBC0?style=flat-square" alt="Async"/>
@@ -42,6 +43,12 @@ Brand Input → Research → Generate Queries → Run Against AI Models → Anal
 - An [OpenRouter API key](https://openrouter.ai/keys) (one key for all AI models), or individual provider API keys
 
 ### Install
+
+```bash
+pip install voyage-geo
+```
+
+Or install from source:
 
 ```bash
 git clone https://github.com/Onvoyage-AI/voyage-geo-agent.git
@@ -76,6 +83,8 @@ Voyage GEO is designed to work as a conversational tool through [Claude Code](ht
 - **`/geo-research`** — Deep-dive brand research with web search and site scraping.
 - **`/geo-explore`** — Explore past analysis results interactively.
 - **`/geo-report`** — Generate shareable reports from existing runs.
+- **`/geo-leaderboard`** — Category-wide brand comparison. Ranks all brands by AI visibility.
+- **`/geo-add-provider`** — Add a new AI model provider with guided implementation.
 - **`/geo-debug`** — Diagnose and fix failed runs.
 
 ## CLI Reference

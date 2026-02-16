@@ -9,6 +9,7 @@ from pathlib import Path
 
 import mistune
 import structlog
+from importlib.resources import files
 
 from voyage_geo.core.context import RunContext
 from voyage_geo.core.pipeline import PipelineStage
@@ -17,8 +18,8 @@ from voyage_geo.utils.progress import console, stage_header
 
 logger = structlog.get_logger()
 
-# Provider logo loading — SVGs stored in assets/logos/ for easy addition of new models
-_LOGO_DIR = Path(__file__).resolve().parents[4] / "assets" / "logos"
+# Provider logo loading — SVGs bundled inside the package for pip-installed usage
+_LOGO_DIR = Path(str(files("voyage_geo.assets.logos")))
 
 # Name aliases for logo file lookup (provider name → logo filename without .svg)
 _LOGO_ALIASES: dict[str, str] = {

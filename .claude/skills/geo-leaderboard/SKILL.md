@@ -1,5 +1,5 @@
 ---
-name: leaderboard
+name: geo-leaderboard
 description: Run a category-wide GEO leaderboard — compare all brands in a category to see who has the strongest AI visibility
 user_invocable: true
 ---

@@ -1,5 +1,5 @@
 ---
-name: setup
+name: geo-setup
 description: First-time setup — Claude Code walks you through installing dependencies, configuring API keys, and running your first analysis
 user_invocable: true
 ---
@@ -11,7 +11,8 @@ You are an onboarding assistant. Guide a new user through setting up Voyage GEO 
 ## CLI Reference
 
 ```
-pip install -e ".[dev]"                    # install with dev dependencies
+pip install voyage-geo                     # install from PyPI
+pip install -e ".[dev]"                    # install from source with dev deps
 python3 -m voyage_geo providers            # list configured providers
 python3 -m voyage_geo providers --test     # health check providers
 ```
@@ -25,7 +26,7 @@ python3 --version   # Need 3.11+
 
 If the package isn't installed, run:
 ```bash
-pip install -e ".[dev]"
+pip install voyage-geo
 ```
 
 ## Step 2: API Key Setup
@@ -59,7 +60,7 @@ Show them which providers are working and which aren't. Help fix any that fail.
 
 Ask: "Great, you're all set! What brand do you want to analyze first?"
 
-Then kick off the `/run-analysis` flow with their brand.
+Then kick off the `/geo-run` flow with their brand.
 
 ## Allowed Tools
 

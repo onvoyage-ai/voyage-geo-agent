@@ -1,5 +1,5 @@
 ---
-name: generate-report
+name: geo-report
 description: Generate a shareable GEO report — Claude Code creates HTML/PDF/CSV reports and explains the key takeaways
 user_invocable: true
 ---

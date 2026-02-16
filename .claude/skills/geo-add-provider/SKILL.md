@@ -1,5 +1,5 @@
 ---
-name: add-provider
+name: geo-add-provider
 description: Add a new AI provider — Claude Code walks you through implementing and registering a new AI model provider
 user_invocable: true
 ---

@@ -1,5 +1,5 @@
 ---
-name: brand-research
+name: geo-research
 description: Interactively research a brand — Claude Code interviews you about your brand, scrapes your site, identifies competitors, and builds a brand profile
 user_invocable: true
 ---
@@ -55,7 +55,7 @@ If they want changes, edit the `brand-profile.json` directly.
 
 Ask: "Want me to run a full GEO analysis now? I'll generate queries and test how AI models talk about your brand."
 
-If yes, hand off to the run-analysis flow.
+If yes, hand off to the `/geo-run` flow.
 
 ## Allowed Tools
 

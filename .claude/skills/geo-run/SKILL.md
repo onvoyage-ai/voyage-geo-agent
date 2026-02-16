@@ -1,5 +1,5 @@
 ---
-name: run-analysis
+name: geo-run
 description: Run a full GEO analysis — Claude Code guides you through brand research, query generation, execution, analysis, and reporting interactively
 user_invocable: true
 ---

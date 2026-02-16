@@ -1,5 +1,5 @@
 ---
-name: explore-results
+name: geo-explore
 description: Interactively explore GEO results — Claude Code walks you through findings, answers questions, and helps you understand your AI visibility
 user_invocable: true
 ---

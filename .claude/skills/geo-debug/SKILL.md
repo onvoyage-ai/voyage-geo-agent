@@ -1,5 +1,5 @@
 ---
-name: debug-run
+name: geo-debug
 description: Debug a failed GEO run — Claude Code diagnoses issues, checks API keys, and helps fix problems
 user_invocable: true
 ---
