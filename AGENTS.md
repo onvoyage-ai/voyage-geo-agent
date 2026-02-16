@@ -52,16 +52,29 @@ Ask the user:
 
 Do NOT proceed until you have at least the brand name.
 
-## Step 2: Check Setup
+## Step 2: Check Setup & Choose Models
 
-Run voyage-geo providers to see which API keys are configured.
-
-If no providers are configured:
-- Check if voyage-geo is installed. If not: pip install voyage-geo
-- Ask the user to set up at least one API key. Recommended: OpenRouter (one key for all models) at https://openrouter.ai/keys
-- Or individual keys: OpenAI, Anthropic, Google
-- Write keys to .env file. NEVER echo keys back to the user.
-- Verify with voyage-geo providers --test
+1. Check if voyage-geo is installed. If not: pip install voyage-geo
+2. Run voyage-geo providers to see which API keys are configured.
+3. Present available models and ask the user which ones to include:
+   - ChatGPT (OPENROUTER_API_KEY or OPENAI_API_KEY)
+   - Claude (OPENROUTER_API_KEY or ANTHROPIC_API_KEY)
+   - Gemini (OPENROUTER_API_KEY or GOOGLE_API_KEY)
+   - Perplexity (OPENROUTER_API_KEY or PERPLEXITY_API_KEY)
+   - DeepSeek (OPENROUTER_API_KEY)
+   - Grok (OPENROUTER_API_KEY)
+   - Llama (OPENROUTER_API_KEY)
+   - Mistral (OPENROUTER_API_KEY)
+   - Cohere (OPENROUTER_API_KEY)
+   - Qwen (OPENROUTER_API_KEY)
+   - Kimi (OPENROUTER_API_KEY)
+   - GLM (OPENROUTER_API_KEY)
+   Tip: OpenRouter (https://openrouter.ai/keys) gives access to all models with one key.
+4. After the user picks models, check which API keys are missing.
+   - If keys are missing, ask the user to provide them.
+   - Write keys to .env file. NEVER echo keys back to the user.
+5. Verify with voyage-geo providers --test
+6. Confirm the final model list with the user before proceeding.
 
 ## Step 3: Confirm & Run
 

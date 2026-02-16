@@ -23,7 +23,7 @@ def run(
     brand: str = typer.Option(..., "--brand", "-b", help="Brand name to analyze"),
     website: str | None = typer.Option(None, "--website", "-w", help="Brand website URL"),
     providers: str = typer.Option(
-        "chatgpt,gemini,claude,perplexity-or,deepseek,grok,llama",
+        "chatgpt,gemini,claude,perplexity-or,deepseek,grok,llama,mistral,cohere,qwen,kimi,glm",
         "--providers",
         "-p",
         help="Comma-separated provider names",
@@ -252,7 +252,7 @@ def report(
 def leaderboard(
     category: str = typer.Argument(..., help="Category to analyze (e.g. 'top vc', 'best CRM tools')"),
     providers: str = typer.Option(
-        "chatgpt,gemini,claude,perplexity-or,deepseek,grok,llama",
+        "chatgpt,gemini,claude,perplexity-or,deepseek,grok,llama,mistral,cohere,qwen,kimi,glm",
         "--providers",
         "-p",
         help="Comma-separated provider names",

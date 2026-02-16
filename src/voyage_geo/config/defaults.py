@@ -48,4 +48,24 @@ DEFAULT_PROVIDERS: dict[str, ProviderConfig] = {
         name="llama",
         base_url="https://openrouter.ai/api/v1",
     ),
+    "mistral": ProviderConfig(
+        name="mistral",
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "cohere": ProviderConfig(
+        name="cohere",
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "qwen": ProviderConfig(
+        name="qwen",
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "kimi": ProviderConfig(
+        name="kimi",
+        base_url="https://openrouter.ai/api/v1",
+    ),
+    "glm": ProviderConfig(
+        name="glm",
+        base_url="https://openrouter.ai/api/v1",
+    ),
 }

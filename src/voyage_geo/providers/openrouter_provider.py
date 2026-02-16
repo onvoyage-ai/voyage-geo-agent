@@ -19,6 +19,11 @@ OPENROUTER_MODELS: dict[str, tuple[str, str]] = {
     "deepseek": ("deepseek/deepseek-v3.2", "DeepSeek"),
     "grok": ("x-ai/grok-3", "Grok"),
     "llama": ("meta-llama/llama-4-maverick", "Llama"),
+    "mistral": ("mistralai/mistral-large-2512", "Mistral"),
+    "cohere": ("cohere/command-a-03-2025", "Cohere"),
+    "qwen": ("qwen/qwen3-235b-a22b-07-25", "Qwen"),
+    "kimi": ("moonshotai/kimi-k2.5-0127", "Kimi"),
+    "glm": ("thudm/glm-4-32b", "GLM"),
 }
 
 

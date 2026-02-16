@@ -37,16 +37,39 @@ Ask the user:
 
 Do NOT proceed until you have at least the brand name.
 
-## Step 2: Check Setup
+## Step 2: Check Setup & Choose Models
 
-Run `voyage-geo providers` to see which API keys are configured.
+1. Check if `voyage-geo` is installed. If not: `pip install voyage-geo`
+2. Run `voyage-geo providers` to see which API keys are configured.
+3. Present the available models as a checklist and ask the user which ones to include:
 
-If no providers are configured:
-- Check if `voyage-geo` is installed. If not: `pip install voyage-geo`
-- Ask the user to set up at least one API key. Recommended: OpenRouter (one key for all models) at https://openrouter.ai/keys
-- Or individual keys: OpenAI (https://platform.openai.com/api-keys), Anthropic (https://console.anthropic.com/), Google (https://aistudio.google.com/apikey)
-- Write keys to `.env` file. NEVER echo keys back to the user.
-- Verify with `voyage-geo providers --test`
+   | Model | Provider | Key needed |
+   |-------|----------|------------|
+   | ChatGPT | OpenRouter or OpenAI | `OPENROUTER_API_KEY` or `OPENAI_API_KEY` |
+   | Claude | OpenRouter or Anthropic | `OPENROUTER_API_KEY` or `ANTHROPIC_API_KEY` |
+   | Gemini | OpenRouter or Google | `OPENROUTER_API_KEY` or `GOOGLE_API_KEY` |
+   | Perplexity | OpenRouter or Perplexity | `OPENROUTER_API_KEY` or `PERPLEXITY_API_KEY` |
+   | DeepSeek | OpenRouter | `OPENROUTER_API_KEY` |
+   | Grok | OpenRouter | `OPENROUTER_API_KEY` |
+   | Llama | OpenRouter | `OPENROUTER_API_KEY` |
+   | Mistral | OpenRouter | `OPENROUTER_API_KEY` |
+   | Cohere | OpenRouter | `OPENROUTER_API_KEY` |
+   | Qwen | OpenRouter | `OPENROUTER_API_KEY` |
+   | Kimi | OpenRouter | `OPENROUTER_API_KEY` |
+   | GLM | OpenRouter | `OPENROUTER_API_KEY` |
+
+   **Tip:** OpenRouter (https://openrouter.ai/keys) gives access to all models with one key.
+
+4. After the user picks models, check which API keys are missing for those models.
+   - If keys are missing, ask the user to provide them. Link to:
+     - OpenRouter: https://openrouter.ai/keys
+     - OpenAI: https://platform.openai.com/api-keys
+     - Anthropic: https://console.anthropic.com/
+     - Google: https://aistudio.google.com/apikey
+     - Perplexity: https://docs.perplexity.ai/
+   - Write keys to `.env` file. NEVER echo keys back to the user.
+5. Verify with `voyage-geo providers --test`
+6. Confirm the final model list with the user before proceeding.
 
 ## Step 3: Confirm & Run
 
