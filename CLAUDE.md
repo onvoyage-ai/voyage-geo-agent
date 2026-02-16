@@ -4,9 +4,15 @@
 
 Voyage GEO is an open source GEO (Generative Engine Optimization) tool, designed to be used through Claude Code. It analyzes how AI models (ChatGPT, Claude, Gemini, Perplexity) reference and recommend brands. Think of it as SEO analytics, but for AI search engines.
 
-## How to Use (Claude Code Skills)
+## How to Use (AI Agent Skills)
 
-The primary interface is through Claude Code slash commands:
+Skills work with Claude Code, OpenClaw, and any agent supporting `SKILL.md`. Install with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh | bash
+```
+
+The primary interface is through slash commands:
 
 - `/geo-setup` — First-time onboarding. Installs deps, configures API keys, verifies everything works.
 - `/geo-run` — Full GEO analysis. Claude interviews you about your brand, runs the pipeline, and walks you through results.

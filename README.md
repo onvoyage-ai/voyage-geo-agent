@@ -74,18 +74,48 @@ python3 -m voyage_geo run -b "YourBrand" -w "https://yourbrand.com" \
   -p chatgpt,gemini,claude,perplexity-or -f html,json,csv,markdown --no-interactive
 ```
 
-## Using with Claude Code
+## Using with AI Agents
 
-Voyage GEO is designed to work as a conversational tool through [Claude Code](https://docs.anthropic.com/en/docs/claude-code). The slash commands give you an interactive experience where Claude walks you through each step:
+Voyage GEO ships 8 interactive skills that work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenClaw](https://openclaw.ai), and any agent that supports the `SKILL.md` format.
 
-- **`/geo-setup`** — First-time onboarding. Installs deps, configures API keys, verifies everything works.
-- **`/geo-run`** — Full GEO analysis. Claude interviews you about your brand, runs the pipeline, reviews results with you.
-- **`/geo-research`** — Deep-dive brand research with web search and site scraping.
-- **`/geo-explore`** — Explore past analysis results interactively.
-- **`/geo-report`** — Generate shareable reports from existing runs.
-- **`/geo-leaderboard`** — Category-wide brand comparison. Ranks all brands by AI visibility.
-- **`/geo-add-provider`** — Add a new AI model provider with guided implementation.
-- **`/geo-debug`** — Diagnose and fix failed runs.
+### Install Skills
+
+**One-liner** (auto-detects Claude Code or OpenClaw):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh | bash
+```
+
+**OpenClaw** — installs to `~/.openclaw/skills/` (available to all agents):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh | bash
+```
+
+**Claude Code** — run from your project directory (installs to `.claude/skills/`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh | bash
+```
+
+**Custom directory:**
+
+```bash
+VOYAGE_GEO_SKILL_DIR=/path/to/skills curl -fsSL https://raw.githubusercontent.com/Onvoyage-AI/voyage-geo-agent/main/install-skills.sh | bash
+```
+
+### Available Skills
+
+| Command | Description |
+|---------|-------------|
+| `/geo-setup` | First-time onboarding. Installs deps, configures API keys, verifies everything works. |
+| `/geo-run` | Full GEO analysis. The agent interviews you about your brand, runs the pipeline, reviews results. |
+| `/geo-research` | Deep-dive brand research with web search and site scraping. |
+| `/geo-explore` | Explore past analysis results interactively. |
+| `/geo-report` | Generate shareable reports from existing runs. |
+| `/geo-leaderboard` | Category-wide brand comparison. Ranks all brands by AI visibility. |
+| `/geo-add-provider` | Add a new AI model provider with guided implementation. |
+| `/geo-debug` | Diagnose and fix failed runs. |
 
 ## CLI Reference
 
