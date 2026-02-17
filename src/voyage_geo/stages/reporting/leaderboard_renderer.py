@@ -374,13 +374,13 @@ class LeaderboardRenderer:
             if entry.top_positive_excerpt:
                 excerpts += (
                     f'<div class="exc exc-pos"><div class="exc-text">'
-                    f'{e(entry.top_positive_excerpt)}</div>'
+                    f'{md(entry.top_positive_excerpt)}</div>'
                     f'<div class="exc-meta">{e(entry.top_positive_provider)} &middot; {entry.top_positive_score:.2f}</div></div>'
                 )
             if entry.top_negative_excerpt:
                 excerpts += (
                     f'<div class="exc exc-neg"><div class="exc-text">'
-                    f'{e(entry.top_negative_excerpt)}</div>'
+                    f'{md(entry.top_negative_excerpt)}</div>'
                     f'<div class="exc-meta">{e(entry.top_negative_provider)} &middot; {entry.top_negative_score:.2f}</div></div>'
                 )
 
@@ -590,6 +590,12 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 .exc-pos{{border-left-color:var(--c-positive)}}
 .exc-neg{{border-left-color:var(--c-negative)}}
 .exc-text{{font-size:13px;color:var(--c-text2);line-height:1.65}}
+.exc-text p{{margin:0 0 8px}}
+.exc-text p:last-child{{margin:0}}
+.exc-text h1,.exc-text h2,.exc-text h3,.exc-text h4{{font-size:13px;font-weight:700;color:var(--c-text);margin:0 0 6px}}
+.exc-text ul,.exc-text ol{{margin:0 0 8px;padding-left:20px}}
+.exc-text li{{margin:2px 0}}
+.exc-text strong{{color:var(--c-text)}}
 .exc-meta{{font-size:11px;color:var(--c-text3);margin-top:6px;font-weight:500}}
 
 /* Queries table */

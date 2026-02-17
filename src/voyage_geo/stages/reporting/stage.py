@@ -361,6 +361,12 @@ body{{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--c-
 .exc-pos{{border-left-color:var(--c-positive)}}
 .exc-neg{{border-left-color:var(--c-negative)}}
 .exc-text{{font-size:13px;color:var(--c-text2);line-height:1.65}}
+.exc-text p{{margin:0 0 8px}}
+.exc-text p:last-child{{margin:0}}
+.exc-text h1,.exc-text h2,.exc-text h3,.exc-text h4{{font-size:13px;font-weight:700;color:var(--c-text);margin:0 0 6px}}
+.exc-text ul,.exc-text ol{{margin:0 0 8px;padding-left:20px}}
+.exc-text li{{margin:2px 0}}
+.exc-text strong{{color:var(--c-text)}}
 .exc-meta{{font-size:11px;color:var(--c-text3);margin-top:6px;font-weight:500;display:flex;align-items:center;gap:6px}}
 .exc-logo{{width:16px;height:16px;flex-shrink:0}}
 .exc-logo svg{{width:16px;height:16px;display:block}}
@@ -532,12 +538,19 @@ body{{background:#fff}}
 
     def _excerpts_html(self, a) -> str:
         e = html_mod.escape
+        md = mistune.create_markdown(escape=True)
         has_pos = bool(a.sentiment.top_positive)
         has_neg = bool(a.sentiment.top_negative)
         if not has_pos and not has_neg:
             return ""
-        pos_h = "".join(f'<div class="exc exc-pos"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta"><span class="exc-logo">{_provider_logo(x.provider)}</span>{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_positive[:5])
-        neg_h = "".join(f'<div class="exc exc-neg"><div class="exc-text">{e(x.text[:300])}</div><div class="exc-meta"><span class="exc-logo">{_provider_logo(x.provider)}</span>{e(x.provider)} &middot; {x.score:.2f}</div></div>' for x in a.sentiment.top_negative[:5])
+        pos_h = "".join(
+            f'<div class="exc exc-pos"><div class="exc-text">{md(x.text[:300])}</div><div class="exc-meta"><span class="exc-logo">{_provider_logo(x.provider)}</span>{e(x.provider)} &middot; {x.score:.2f}</div></div>'
+            for x in a.sentiment.top_positive[:5]
+        )
+        neg_h = "".join(
+            f'<div class="exc exc-neg"><div class="exc-text">{md(x.text[:300])}</div><div class="exc-meta"><span class="exc-logo">{_provider_logo(x.provider)}</span>{e(x.provider)} &middot; {x.score:.2f}</div></div>'
+            for x in a.sentiment.top_negative[:5]
+        )
         left = f'<div class="panel"><div class="panel-head">Top Positive</div><div class="panel-body">{pos_h}</div></div>' if has_pos else ""
         right = f'<div class="panel"><div class="panel-head">Top Negative</div><div class="panel-body">{neg_h}</div></div>' if has_neg else ""
         return f'<div class="sect"><h3>Sentiment Excerpts</h3><div class="g2">{left}{right}</div></div>'
