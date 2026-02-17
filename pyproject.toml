@@ -52,6 +52,10 @@ dev = [
     "mypy>=1.14.0",
     "pandas-stubs>=2.2.0",
 ]
+app = [
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+]
 
 [project.scripts]
 voyage-geo = "voyage_geo.cli:app"

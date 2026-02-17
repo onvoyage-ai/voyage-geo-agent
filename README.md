@@ -95,6 +95,28 @@ The agent will `pip install voyage-geo` and create the skill files automatically
 | `/geo-run` | Full GEO analysis — setup, brand research, query generation, execution, analysis, and reporting |
 | `/geo-leaderboard` | Category-wide brand comparison — ranks all brands by AI visibility |
 
+## App Mode (Optional GUI)
+
+You can run an optional local GUI + API without changing CLI/agent workflows.
+
+Install app extras:
+
+```bash
+pip install "voyage-geo[app]"
+```
+
+Start app mode:
+
+```bash
+python3 -m voyage_geo app --host 127.0.0.1 --port 8765
+```
+
+Then open `http://127.0.0.1:8765`.
+
+- GUI handles run discovery, job progress, and logs.
+- Backend API (`/api/*`) is the shared glue for GUI + Claude/Codex automation.
+- Existing CLI and skill-based agent mode continue to work unchanged.
+
 ## CLI Reference
 
 ```bash
@@ -121,6 +143,9 @@ python3 -m voyage_geo trends -b "YourBrand" --metric overall_score --json
 
 # Generate interactive HTML trends dashboard
 python3 -m voyage_geo trends-dashboard -b "YourBrand"
+
+# Start optional local GUI + API mode
+python3 -m voyage_geo app --host 127.0.0.1 --port 8765
 
 # List past runs
 python3 -m voyage_geo runs

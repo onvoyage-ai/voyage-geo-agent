@@ -572,6 +572,27 @@ def trends_dashboard(
     console.print(f"[green]Dashboard generated:[/green] {path}")
 
 
+@app.command(name="app")
+def app_mode(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind host"),
+    port: int = typer.Option(8765, "--port", help="Bind port"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Run output directory"),
+) -> None:
+    """Start optional local GUI + API mode."""
+    try:
+        import uvicorn  # type: ignore
+    except Exception:
+        console.print("[red]App mode requires FastAPI/Uvicorn.[/red]")
+        console.print("Install with: [bold]pip install 'voyage-geo[app]'[/bold]")
+        raise typer.Exit(1)
+
+    from voyage_geo.app.server import create_app
+
+    server_app = create_app(output_dir=output_dir)
+    console.print(f"[bold green]Starting app mode[/bold green] on http://{host}:{port}")
+    uvicorn.run(server_app, host=host, port=port, log_level="info")
+
+
 @app.command()
 def version() -> None:
     """Show version."""
