@@ -384,7 +384,7 @@ JSON object:"""
             total_count = self.config.queries.count
             console.print()
             console.print(f"  [bold]Generating {total_count} leaderboard queries...[/bold]")
-            console.print(f"  [dim]Strategies: direct-rec, vertical, comparison, scenario[/dim]")
+            console.print(f"  [dim]Strategies: discovery, vertical[/dim]")
 
             queries = await generate_leaderboard_queries(
                 category_profile, total_count, self._processing_provider

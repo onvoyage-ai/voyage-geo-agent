@@ -68,10 +68,10 @@ Read `data/runs/<run-id>/queries.json` and present them in a table:
 
 | # | Strategy | Category | Query |
 |---|----------|----------|-------|
-| 1 | direct-rec | best-of | who are the best VC firms right now |
-| 2 | vertical | recommendation | best VCs for biotech startups |
-| 3 | comparison | comparison | rank the top 10 VC firms by reputation |
-| 4 | scenario | recommendation | I'm raising Series A, which VCs should I pitch |
+| 1 | discovery | recommendation | which vcs are worth pitching to right now |
+| 2 | discovery | general | who are the good investors for early stage startups |
+| 3 | vertical | recommendation | who invests in climate tech startups these days |
+| 4 | vertical | best-of | im in healthcare ai who should i be talking to |
 
 Ask: **"These are the queries I'll send to all AI models. Look good?"**
 

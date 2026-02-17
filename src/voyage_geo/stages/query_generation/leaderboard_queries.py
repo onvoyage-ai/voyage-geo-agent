@@ -1,14 +1,12 @@
-"""Leaderboard query generation — every query is designed to elicit brand recommendations.
+"""Leaderboard query generation — mirrors how real people actually ask AI for recommendations.
 
-Unlike single-brand GEO queries (which are generic and test organic mention), leaderboard
-queries exist to FORCE AI models to name, rank, and compare brands. Every query should
-produce a response that mentions specific companies/products by name.
+The goal is to measure organic AI mindshare: which brands do AI models naturally surface
+when a real person asks a genuine question? Every query should read like something an
+actual user would type into ChatGPT, Claude, or Perplexity — not like an engineered prompt.
 
 Strategies:
-- direct-rec: "best X", "top X", "recommend X" — straightforward recommendation asks
-- vertical: vary by sub-niche/vertical within the category
-- comparison: ask AI to explicitly rank, compare, or pick winners
-- scenario: realistic buyer situations where someone needs specific recommendations
+- discovery: broad, natural questions someone asks when starting their search in a category
+- vertical: questions from someone with a specific need, use case, or domain in mind
 """
 
 from __future__ import annotations
@@ -23,85 +21,96 @@ from voyage_geo.types.query import GeneratedQuery
 YEAR = datetime.now(UTC).year
 
 
-def _direct_rec_prompt(profile: BrandProfile, count: int) -> str:
-    return f"""Generate {count} search queries that DIRECTLY ask for recommendations in the "{profile.category}" space.
+def _discovery_prompt(profile: BrandProfile, count: int) -> str:
+    return f"""You are given a category: "{profile.category}"
 
-CONTEXT:
+Your task is to infer {count} search queries that a real person would type into an AI assistant (like ChatGPT, Claude, or Perplexity) when they are genuinely trying to discover or choose something in this space.
+
+Context:
 - Category: {profile.category}
 - Industry: {profile.industry}
-- Keywords: {", ".join(profile.keywords[:6]) or profile.category}
+- Related terms: {", ".join(profile.keywords[:6]) or profile.category}
 - Year: {YEAR}
 
-THE GOAL: Every query must be one that will make an AI model respond with a LIST OF SPECIFIC BRAND NAMES. If the query could be answered without naming any companies, it's useless — don't generate it.
+Requirements:
+- Each query should represent a real user intent — the kind of thing someone actually types when they need help deciding
+- Phrase queries the way real people talk to AI: natural, concise, conversational
+- Vary the angle — some people are just starting to explore, others are closer to a decision
+- Do not use artificial phrasing like "list the top 10" or "rank the best" — real people rarely talk that way
+- Do not include any specific brand or company name in the query text
+
+CRITICAL — every query MUST pass this test:
+The AI's response will inevitably contain specific names. If a query could be fully answered with general advice, criteria, or opinions WITHOUT naming specific brands/companies/institutions, it is USELESS for our purpose. Do not generate it.
+
+BAD queries that fail this test:
+- "how do i figure out which university is best for me" ← advice about methodology, no names needed
+- "are prestigious universities still worth it" ← philosophical debate, no names needed
+- "what should i look for when comparing options" ← evaluation criteria, no names needed
+- "do rankings actually mean anything" ← meta-discussion about rankings, no names needed
+
+Also BAD — geographic filters that exclude major players:
+- "which ones outside the US are good" ← suppresses the biggest names from responses
+- "best options in Europe only" ← artificially limits which brands can appear
 
 GOOD EXAMPLES (for "venture capital firms"):
-- who are the best VC firms right now
-- top venture capital firms to pitch to in {YEAR}
-- recommend the best VCs for startups
-- which are the most respected VC firms
-- list the top 10 venture capital investors
+- which vcs are worth pitching to right now
+- who are the good investors for early stage startups
+- what venture capital firms actually add value beyond money
+- best vcs that are actively investing in {YEAR}
+- who should i talk to if im raising a seed round
 
-BAD EXAMPLES — NEVER generate queries like these:
-- "how does venture capital work" ← educational, won't name specific firms
-- "what should I look for in an investor" ← advice, not recommendations
-- "is venture capital worth it" ← philosophical, no brand names
-
-YOUR QUERIES MUST:
-- Be 5-12 words, conversational
-- ALWAYS ask for specific companies/brands/products by requesting "best", "top", "recommend", "which", "who", "list"
-- Produce a response where the AI HAS to name multiple brands
-
-RULES:
-- NEVER include any specific brand or company name in the query
-- Each query on its own line:
-
+Output format — each query on its own line:
 <query text> | <category> | <intent>
 
-Categories: recommendation, comparison, best-of, how-to, review, alternative, general
-Intent: discovery, evaluation, ranking
+Categories: recommendation, best-of, general
+Intent: discovery, evaluation, exploration
 
 Generate exactly {count} queries:"""
 
 
 def _vertical_prompt(profile: BrandProfile, count: int) -> str:
-    return f"""Generate {count} search queries asking for the best "{profile.category}" for DIFFERENT SPECIFIC VERTICALS/NICHES.
+    return f"""You are given a category: "{profile.category}"
 
-CONTEXT:
+Your task is to infer {count} search queries from people who have a specific need, use case, or domain in mind within this category. Each person knows what they want — they just need to find the right fit.
+
+Context:
 - Category: {profile.category}
 - Industry: {profile.industry}
-- Keywords: {", ".join(profile.keywords[:6]) or profile.category}
+- Related terms: {", ".join(profile.keywords[:6]) or profile.category}
 - Year: {YEAR}
 
-THE GOAL: Each query targets a different sub-niche, vertical, segment, or use case within "{profile.category}". The AI must respond with specific brand names that serve that niche.
+Requirements:
+- Each query should come from a different angle — different fields, needs, goals, or constraints
+- Phrase queries naturally, the way someone with domain knowledge actually asks
+- The person has a specific context (their field, their problem, their situation) but hasn't decided on a brand yet
+- Do not repeat the same sentence structure — vary how the questions are framed
+- Do not include any specific brand or company name in the query text
+
+CRITICAL — every query MUST pass this test:
+The AI's response will inevitably contain specific names. If a query could be fully answered with general advice, criteria, or opinions WITHOUT naming specific brands/companies/institutions, it is USELESS for our purpose. Do not generate it.
+
+BAD queries that fail this test:
+- "what should i consider when picking a program" ← criteria-seeking, no names needed
+- "how do i break into this field" ← career advice, no names needed
+- "is it worth specializing in X" ← opinion question, no names needed
+
+Also BAD — geographic filters that exclude major players:
+- "best options in europe for X" ← artificially limits responses to one region
+- "outside of the US who is good at X" ← suppresses dominant players from appearing
+Instead, let the AI surface names from any geography organically.
 
 GOOD EXAMPLES (for "venture capital firms"):
-- best VC firms for biotech startups
-- top investors for fintech companies
-- which VCs focus on enterprise SaaS
-- best venture capital for consumer apps
-- top VCs for hardware startups
-- which investors specialize in AI companies
-- best VCs for climate tech
+- who invests in climate tech startups these days
+- good vcs for a b2b saas company doing $2m arr
+- which investors actually understand deep tech
+- im in healthcare ai who should i be talking to
+- best investors for consumer social apps
 
-BAD EXAMPLES:
-- "how to find investors in biotech" ← asks how, not who
-- "biotech startup funding landscape" ← noun phrase, won't get brand names
-
-VARY across different verticals, industries, stages, geographies, company sizes, and sectors. Each query should target a DIFFERENT niche.
-
-YOUR QUERIES MUST:
-- Be 5-14 words, conversational
-- Ask "best X for Y", "top X in Y", "which X focus on Y"
-- ALWAYS produce a response with specific brand/company names
-
-RULES:
-- NEVER include any specific brand or company name
-- Each query on its own line:
-
+Output format — each query on its own line:
 <query text> | <category> | <intent>
 
-Categories: recommendation, comparison, best-of, how-to, review, alternative, general
-Intent: vertical-discovery, niche-evaluation, segment-ranking
+Categories: recommendation, best-of, general
+Intent: vertical-discovery, niche-evaluation, domain-search
 
 Generate exactly {count} queries:"""
 
@@ -190,10 +199,8 @@ Generate exactly {count} queries:"""
 
 
 LEADERBOARD_STRATEGIES = {
-    "direct-rec": _direct_rec_prompt,
+    "discovery": _discovery_prompt,
     "vertical": _vertical_prompt,
-    "comparison": _comparison_prompt,
-    "scenario": _scenario_prompt,
 }
 
 
@@ -202,17 +209,15 @@ async def generate_leaderboard_queries(
     total_count: int,
     provider: BaseProvider,
 ) -> list[GeneratedQuery]:
-    """Generate queries optimized for leaderboard — every query forces brand recommendations."""
+    """Generate natural user queries that mirror how real people ask AI for recommendations."""
     strategies = list(LEADERBOARD_STRATEGIES.items())
     per_strategy = -(-total_count // len(strategies))  # ceil div
 
     all_queries: list[GeneratedQuery] = []
 
     prefix_map = {
-        "direct-rec": "dr",
+        "discovery": "ds",
         "vertical": "vt",
-        "comparison": "cp",
-        "scenario": "sc",
     }
 
     for strategy_name, prompt_fn in strategies:

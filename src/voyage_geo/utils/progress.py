@@ -35,8 +35,9 @@ def print_query_table(queries: list) -> None:  # list[GeneratedQuery]
         "persona": "magenta",
         "competitor": "yellow",
         "intent": "green",
-        "direct-rec": "bright_cyan",
+        "discovery": "bright_cyan",
         "vertical": "bright_magenta",
+        "direct-rec": "bright_cyan",
         "comparison": "bright_yellow",
         "scenario": "bright_green",
     }

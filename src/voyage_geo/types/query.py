@@ -14,7 +14,7 @@ QueryCategory = Literal[
     "general",
 ]
 
-QueryStrategy = Literal["keyword", "persona", "competitor", "intent", "direct-rec", "vertical", "comparison", "scenario"]
+QueryStrategy = Literal["keyword", "persona", "competitor", "intent", "discovery", "vertical", "direct-rec", "comparison", "scenario"]
 
 
 class GeneratedQuery(BaseModel):
