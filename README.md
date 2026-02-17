@@ -117,6 +117,17 @@ Then open `http://127.0.0.1:8765`.
 - Backend API (`/api/*`) is the shared glue for GUI + Claude/Codex automation.
 - Existing CLI and skill-based agent mode continue to work unchanged.
 
+### Control Center Preview
+
+The local GUI includes:
+- Start GEO runs and leaderboard runs from a visual form
+- Model selection with click-to-toggle checkboxes
+- Live jobs table + streaming logs
+- Past runs browser with one-click report opening
+- Auto-generated HTML report fallback when only JSON exists
+
+![Voyage GEO Control Center (Local GUI)](assets/gui_ui.png)
+
 ## CLI Reference
 
 ```bash
