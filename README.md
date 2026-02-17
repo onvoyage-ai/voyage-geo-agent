@@ -113,6 +113,15 @@ python3 -m voyage_geo providers --test
 # Generate reports from an existing run
 python3 -m voyage_geo report -r <run-id> -f html,json,csv,markdown
 
+# Build trend index from completed snapshots
+python3 -m voyage_geo trends-index -o ./data/runs --out-file ./data/trends/snapshots.json
+
+# Query trend series for one brand (includes competitor-relative fields)
+python3 -m voyage_geo trends -b "YourBrand" --metric overall_score --json
+
+# Generate interactive HTML trends dashboard
+python3 -m voyage_geo trends-dashboard -b "YourBrand"
+
 # List past runs
 python3 -m voyage_geo runs
 
@@ -130,6 +139,7 @@ python3 -m voyage_geo version
 | `-q, --queries` | Number of queries to generate (default: 20) |
 | `-f, --formats` | Report formats: html, json, csv, markdown (default: html,json) |
 | `-r, --resume` | Resume from existing run ID |
+| `--as-of-date` | Logical run date (YYYY-MM-DD) for trend tracking/backfills |
 | `--stop-after` | Stop after a stage (research, query-generation) |
 | `--no-interactive` | Skip interactive review prompts |
 
@@ -173,15 +183,16 @@ Each run creates a self-contained directory:
 
 ```
 data/runs/<run-id>/
-├── metadata.json           # Run config and status
+├── metadata.json           # Run metadata (schema_version, status, brand/category, providers, config hash)
 ├── brand-profile.json      # Brand research output
 ├── queries.json            # Generated search queries
 ├── results/
-│   ├── results.json        # All raw AI responses
+│   ├── results.json        # All raw AI responses (+ schema_version)
 │   └── by-provider/        # Split by provider
 ├── analysis/
-│   ├── analysis.json       # Full analysis
-│   ├── summary.json        # Executive summary
+│   ├── analysis.json       # Full analysis (+ schema_version)
+│   ├── summary.json        # Executive summary (+ schema_version)
+│   ├── snapshot.json       # Stable time-series KPI snapshot for trend indexing
 │   └── *.csv               # CSV exports
 └── reports/
     ├── report.html         # Interactive HTML report
@@ -189,6 +200,12 @@ data/runs/<run-id>/
     ├── report.md
     └── charts/             # PNG chart images
 ```
+
+### Data Contract Notes
+
+- `schema_version` is included in persisted core artifacts (`metadata.json`, `results/results.json`, `analysis/analysis.json`, `analysis/summary.json`).
+- `analysis/snapshot.json` is the canonical compact record for over-time visualization and database indexing.
+- `config_hash` in `metadata.json` lets you detect whether runs are directly comparable.
 
 ## Architecture
 

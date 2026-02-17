@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from voyage_geo.storage.schema import SCHEMA_VERSION
+
 
 class SentimentExcerpt(BaseModel):
     text: str
@@ -117,6 +119,7 @@ class NarrativeAnalysis(BaseModel):
 
 
 class ExecutiveSummary(BaseModel):
+    schema_version: str = SCHEMA_VERSION
     headline: str = ""
     key_findings: list[str] = []
     strengths: list[str] = []
@@ -126,6 +129,7 @@ class ExecutiveSummary(BaseModel):
 
 
 class AnalysisResult(BaseModel):
+    schema_version: str = SCHEMA_VERSION
     run_id: str
     brand: str
     analyzed_at: str = ""

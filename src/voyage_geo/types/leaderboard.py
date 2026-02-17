@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from voyage_geo.storage.schema import SCHEMA_VERSION
+
 
 class LeaderboardEntry(BaseModel):
     rank: int
@@ -30,6 +32,7 @@ class LeaderboardEntry(BaseModel):
 
 
 class LeaderboardResult(BaseModel):
+    schema_version: str = SCHEMA_VERSION
     run_id: str
     category: str
     brands: list[str]

@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from voyage_geo.storage.schema import SCHEMA_VERSION
+
 
 class TokenUsage(BaseModel):
     prompt_tokens: int
@@ -25,6 +27,7 @@ class QueryResult(BaseModel):
 
 
 class ExecutionRun(BaseModel):
+    schema_version: str = SCHEMA_VERSION
     run_id: str
     brand: str
     providers: list[str]

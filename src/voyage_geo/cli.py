@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from datetime import date
 
 import typer
 from rich.console import Console
@@ -36,6 +38,7 @@ def run(
     processing_provider: str | None = typer.Option(None, "--processing-provider", help="Provider for non-execution LLM calls (default: anthropic)"),
     processing_model: str | None = typer.Option(None, "--processing-model", help="Model for non-execution LLM calls (default: claude-opus-4-6)"),
     interactive: bool = typer.Option(True, "--interactive/--no-interactive", help="Interactive review checkpoints after research & query generation"),
+    as_of_date: str | None = typer.Option(None, "--as-of-date", help="Logical run date (YYYY-MM-DD) for trend tracking"),
     resume: str | None = typer.Option(None, "--resume", "-r", help="Resume from an existing run ID (skips research, reuses brand profile)"),
     stop_after: str | None = typer.Option(None, "--stop-after", help="Stop pipeline after this stage (e.g. research, query-generation)"),
 ) -> None:
@@ -81,6 +84,13 @@ def run(
 
     from voyage_geo.core.engine import VoyageGeoEngine
 
+    if as_of_date:
+        try:
+            date.fromisoformat(as_of_date)
+        except ValueError:
+            console.print("[red]Invalid --as-of-date. Use YYYY-MM-DD.[/red]")
+            raise typer.Exit(1)
+
     # Validate resume run exists
     if resume:
         from voyage_geo.storage.filesystem import FileSystemStorage
@@ -92,7 +102,13 @@ def run(
                 console.print(f"Available runs: {', '.join(available[:5])}")
             raise typer.Exit(1)
 
-    engine = VoyageGeoEngine(config, interactive=interactive, resume_run_id=resume, stop_after=stop_after)
+    engine = VoyageGeoEngine(
+        config,
+        interactive=interactive,
+        resume_run_id=resume,
+        stop_after=stop_after,
+        as_of_date=as_of_date,
+    )
     result = asyncio.run(engine.run())
 
     if result.analysis_result:
@@ -416,6 +432,144 @@ def runs(
             table.add_row(rid, "—", "—", "—", "—")
 
     console.print(table)
+
+
+@app.command(name="trends-index")
+def trends_index(
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Run output directory"),
+    out_file: str = typer.Option("./data/trends/snapshots.json", "--out-file", help="Destination JSON file"),
+    brand: str | None = typer.Option(None, "--brand", "-b", help="Filter by brand"),
+) -> None:
+    """Build a trend index from analysis snapshots."""
+    from voyage_geo.trends import collect_trend_records, write_trend_index
+
+    records = collect_trend_records(output_dir, brand=brand)
+    path = write_trend_index(records, out_file)
+    console.print(f"[green]Wrote {len(records)} records[/green] to {path}")
+
+
+@app.command()
+def trends(
+    brand: str = typer.Option(..., "--brand", "-b", help="Brand to chart over time"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Run output directory"),
+    metric: str = typer.Option(
+        "overall_score",
+        "--metric",
+        help="Metric: overall_score, mention_rate, mindshare, sentiment_score, share_of_voice_top5, mindshare_gap_to_leader, mention_rate_gap_to_leader",
+    ),
+    compare: str | None = typer.Option(None, "--compare", help="Comma-separated competitor names"),
+    as_json: bool = typer.Option(False, "--json", help="Print JSON payload"),
+) -> None:
+    """Show trend data for a brand, including competitor-relative metrics."""
+    from voyage_geo.trends import build_competitor_series, collect_trend_records
+
+    records = collect_trend_records(output_dir, brand=brand)
+    if not records:
+        console.print(f"[dim]No trend records found for brand: {brand}[/dim]")
+        raise typer.Exit(0)
+
+    allowed = {
+        "overall_score",
+        "mention_rate",
+        "mindshare",
+        "sentiment_score",
+        "share_of_voice_top5",
+        "mindshare_gap_to_leader",
+        "mention_rate_gap_to_leader",
+    }
+    if metric not in allowed:
+        console.print(f"[red]Invalid --metric:[/red] {metric}")
+        console.print(f"Allowed: {', '.join(sorted(allowed))}")
+        raise typer.Exit(1)
+
+    comp_names = [c.strip() for c in compare.split(",")] if compare else None
+
+    series = []
+    for record in records:
+        rel = record.get("competitor_relative", {}) or {}
+        value = record.get(metric)
+        if metric == "share_of_voice_top5":
+            value = rel.get("share_of_voice_top5", 0.0)
+        elif metric == "mindshare_gap_to_leader":
+            value = rel.get("mindshare_gap_to_leader", 0.0)
+        elif metric == "mention_rate_gap_to_leader":
+            value = rel.get("mention_rate_gap_to_leader", 0.0)
+        series.append({
+            "as_of_date": record.get("as_of_date", ""),
+            "run_id": record.get("run_id", ""),
+            "value": value,
+            "leader_brand": rel.get("leader_brand", ""),
+            "brand_rank": rel.get("brand_rank", 0),
+        })
+
+    competitors = build_competitor_series(records, comp_names)
+
+    if as_json:
+        console.print(json.dumps({
+            "brand": brand,
+            "metric": metric,
+            "series": series,
+            "competitors": competitors,
+        }, indent=2))
+        return
+
+    table = Table(title=f"Trends: {brand}", show_header=True, header_style="bold")
+    table.add_column("Date")
+    table.add_column("Run ID")
+    table.add_column(metric)
+    table.add_column("Rank")
+    table.add_column("Leader")
+    for item in series:
+        value = item["value"]
+        if isinstance(value, float):
+            shown = f"{value:.4f}"
+        else:
+            shown = str(value)
+        table.add_row(
+            str(item["as_of_date"]),
+            str(item["run_id"]),
+            shown,
+            str(item["brand_rank"]),
+            str(item["leader_brand"]),
+        )
+    console.print(table)
+
+    if competitors:
+        comp_table = Table(title="Competitor Series", show_header=True, header_style="bold")
+        comp_table.add_column("Competitor")
+        comp_table.add_column("Points")
+        comp_table.add_column("Latest Mindshare")
+        comp_table.add_column("Latest Mention Rate")
+        for name, values in sorted(competitors.items()):
+            latest = values[-1]
+            comp_table.add_row(
+                name,
+                str(len(values)),
+                f"{float(latest.get('mindshare', 0.0)):.4f}",
+                f"{float(latest.get('mention_rate', 0.0)):.4f}",
+            )
+        console.print(comp_table)
+
+
+@app.command(name="trends-dashboard")
+def trends_dashboard(
+    brand: str = typer.Option(..., "--brand", "-b", help="Brand to visualize"),
+    output_dir: str = typer.Option("./data/runs", "--output-dir", "-o", help="Run output directory"),
+    out_file: str | None = typer.Option(None, "--out-file", help="HTML output path"),
+    compare: str | None = typer.Option(None, "--compare", help="Comma-separated competitor names"),
+) -> None:
+    """Generate an HTML trends dashboard for one brand."""
+    from voyage_geo.trends import collect_trend_records
+    from voyage_geo.trends_dashboard import write_dashboard
+
+    records = collect_trend_records(output_dir, brand=brand)
+    if not records:
+        console.print(f"[dim]No trend records found for brand: {brand}[/dim]")
+        raise typer.Exit(0)
+
+    comp_names = [c.strip() for c in compare.split(",")] if compare else None
+    path = write_dashboard(brand, output_dir, out_file=out_file, compare=comp_names)
+    console.print(f"[green]Dashboard generated:[/green] {path}")
 
 
 @app.command()

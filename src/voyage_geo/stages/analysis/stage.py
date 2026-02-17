@@ -18,6 +18,7 @@ from voyage_geo.stages.analysis.analyzers.positioning import PositioningAnalyzer
 from voyage_geo.stages.analysis.analyzers.rank_position import RankPositionAnalyzer
 from voyage_geo.stages.analysis.analyzers.sentiment import SentimentAnalyzer
 from voyage_geo.storage.filesystem import FileSystemStorage
+from voyage_geo.storage.schema import SCHEMA_VERSION
 from voyage_geo.types.analysis import AnalysisResult, ExecutiveSummary
 from voyage_geo.types.brand import BrandProfile
 from voyage_geo.utils.progress import console, stage_header
@@ -141,6 +142,7 @@ class AnalysisStage(PipelineStage):
 
         await self.storage.save_json(ctx.run_id, "analysis/analysis.json", analysis)
         await self.storage.save_json(ctx.run_id, "analysis/summary.json", analysis.summary)
+        await self.storage.save_json(ctx.run_id, "analysis/snapshot.json", self._build_snapshot(analysis))
         console.print(f"  [green]Analysis complete:[/green] {len(analyzers_enabled)} analyzers run")
 
         ctx.analysis_result = analysis
@@ -234,6 +236,63 @@ class AnalysisStage(PipelineStage):
             recommendations=recommendations,
             overall_score=score,
         )
+
+    @staticmethod
+    def _build_snapshot(analysis: AnalysisResult) -> dict:
+        """Build a compact, stable artifact for time-series trend indexing."""
+        competitors = sorted(
+            analysis.competitor_analysis.competitors,
+            key=lambda c: c.mindshare,
+            reverse=True,
+        )
+        brand_lower = analysis.brand.lower()
+        brand_comp = next((c for c in competitors if c.name.lower() == brand_lower), None)
+        leader = competitors[0] if competitors else None
+
+        brand_mindshare = brand_comp.mindshare if brand_comp else analysis.mindshare.overall
+        brand_mention_rate = brand_comp.mention_rate if brand_comp else analysis.mention_rate.overall
+
+        top_competitors = [c for c in competitors if c.name.lower() != brand_lower][:5]
+        top5_pool = competitors[:5]
+        top5_mindshare_sum = sum(c.mindshare for c in top5_pool)
+        share_of_voice_top5 = (brand_mindshare / top5_mindshare_sum) if top5_mindshare_sum > 0 else 0.0
+
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "run_id": analysis.run_id,
+            "brand": analysis.brand,
+            "analyzed_at": analysis.analyzed_at,
+            "overall_score": analysis.summary.overall_score,
+            "mention_rate": analysis.mention_rate.overall,
+            "mindshare": analysis.mindshare.overall,
+            "sentiment_score": analysis.sentiment.overall,
+            "sentiment_label": analysis.sentiment.label,
+            "sentiment_confidence": analysis.sentiment.confidence,
+            "mindshare_rank": analysis.mindshare.rank,
+            "total_brands_detected": analysis.mindshare.total_brands_detected,
+            "mention_rate_by_provider": analysis.mention_rate.by_provider,
+            "mindshare_by_provider": analysis.mindshare.by_provider,
+            "sentiment_by_provider": analysis.sentiment.by_provider,
+            "sentiment_label_by_provider": analysis.sentiment.by_provider_label,
+            "competitor_relative": {
+                "brand_rank": analysis.competitor_analysis.brand_rank or analysis.mindshare.rank,
+                "leader_brand": leader.name if leader else "",
+                "leader_mindshare": leader.mindshare if leader else 0.0,
+                "leader_mention_rate": leader.mention_rate if leader else 0.0,
+                "mindshare_gap_to_leader": brand_mindshare - (leader.mindshare if leader else 0.0),
+                "mention_rate_gap_to_leader": brand_mention_rate - (leader.mention_rate if leader else 0.0),
+                "share_of_voice_top5": share_of_voice_top5,
+                "top_competitors": [
+                    {
+                        "name": c.name,
+                        "mindshare": c.mindshare,
+                        "mention_rate": c.mention_rate,
+                        "sentiment": c.sentiment,
+                    }
+                    for c in top_competitors
+                ],
+            },
+        }
 
     @staticmethod
     def _positioning_strength(analysis: AnalysisResult) -> float:

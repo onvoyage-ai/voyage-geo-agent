@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 
@@ -17,6 +18,7 @@ from voyage_geo.stages.query_generation.stage import QueryGenerationStage
 from voyage_geo.stages.reporting.stage import ReportingStage
 from voyage_geo.stages.research.stage import ResearchStage
 from voyage_geo.storage.filesystem import FileSystemStorage
+from voyage_geo.storage.schema import SCHEMA_VERSION, build_config_hash
 
 logger = structlog.get_logger()
 
@@ -29,11 +31,13 @@ class VoyageGeoEngine:
         interactive: bool = True,
         resume_run_id: str | None = None,
         stop_after: str | None = None,
+        as_of_date: str | None = None,
     ) -> None:
         self.config = config
         self.interactive = interactive
         self.resume_run_id = resume_run_id
         self.stop_after = stop_after
+        self.as_of_date = as_of_date
         self.storage = FileSystemStorage(config.output_dir)
         self.provider_registry = ProviderRegistry()
         self.pipeline = Pipeline()
@@ -90,6 +94,10 @@ class VoyageGeoEngine:
         from voyage_geo.types.brand import BrandProfile
         from voyage_geo.types.query import QuerySet
 
+        metadata = await self.storage.load_json(run_id, "metadata.json")
+        if metadata and metadata.get("started_at"):
+            ctx.started_at = str(metadata["started_at"])
+
         profile_data = await self.storage.load_json(run_id, "brand-profile.json")
         if profile_data:
             ctx.brand_profile = BrandProfile(**profile_data)
@@ -104,6 +112,36 @@ class VoyageGeoEngine:
 
         return ctx
 
+    def _build_metadata_payload(
+        self,
+        ctx: RunContext,
+        *,
+        status: str,
+        completed_at: str | None = None,
+        errors: list[str] | None = None,
+    ) -> dict[str, Any]:
+        enabled_providers = [n for n, p in self.config.providers.items() if p.enabled and p.api_key]
+        payload: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "run_id": ctx.run_id,
+            "type": "analysis",
+            "status": status,
+            "started_at": ctx.started_at,
+            "completed_at": completed_at,
+            "brand": self.config.brand,
+            "website": self.config.website,
+            "providers": enabled_providers,
+            "query_count": self.config.queries.count,
+            "iterations": self.config.execution.iterations,
+            "as_of_date": self.as_of_date,
+            "config_hash": build_config_hash(self.config),
+            "resume_from_run_id": self.resume_run_id,
+            "parent_run_id": self.resume_run_id,
+        }
+        if errors:
+            payload["errors"] = errors
+        return payload
+
     async def run(self) -> RunContext:
         if self.resume_run_id:
             # Reuse the existing run directory
@@ -116,31 +154,31 @@ class VoyageGeoEngine:
             logger.info("engine.start", run_id=ctx.run_id, brand=self.config.brand)
 
         await self.storage.create_run_dir(ctx.run_id)
-        await self.storage.save_metadata(ctx.run_id, {
-            "run_id": ctx.run_id,
-            "started_at": ctx.started_at,
-            "status": "running",
-        })
+        await self.storage.save_metadata(ctx.run_id, self._build_metadata_payload(ctx, status="running"))
 
         try:
             result = await self.pipeline.run(ctx, stop_after=self.stop_after)
             result.completed_at = datetime.now(UTC).isoformat()
 
-            await self.storage.save_metadata(ctx.run_id, {
-                "run_id": ctx.run_id,
-                "started_at": ctx.started_at,
-                "completed_at": result.completed_at,
-                "status": "completed",
-            })
+            await self.storage.save_metadata(
+                ctx.run_id,
+                self._build_metadata_payload(
+                    ctx,
+                    status="completed",
+                    completed_at=result.completed_at,
+                ),
+            )
 
             logger.info("engine.complete", run_id=ctx.run_id)
             return result
         except Exception:
-            await self.storage.save_metadata(ctx.run_id, {
-                "run_id": ctx.run_id,
-                "started_at": ctx.started_at,
-                "completed_at": datetime.now(UTC).isoformat(),
-                "status": "failed",
-                "errors": ctx.errors,
-            })
+            await self.storage.save_metadata(
+                ctx.run_id,
+                self._build_metadata_payload(
+                    ctx,
+                    status="failed",
+                    completed_at=datetime.now(UTC).isoformat(),
+                    errors=ctx.errors,
+                ),
+            )
             raise

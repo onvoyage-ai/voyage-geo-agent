@@ -14,6 +14,7 @@ import asyncio
 import json
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 
@@ -26,6 +27,7 @@ from voyage_geo.stages.execution.stage import ExecutionStage
 from voyage_geo.stages.query_generation.leaderboard_queries import generate_leaderboard_queries
 from voyage_geo.stages.reporting.leaderboard_renderer import LeaderboardRenderer
 from voyage_geo.storage.filesystem import FileSystemStorage
+from voyage_geo.storage.schema import SCHEMA_VERSION, build_config_hash
 from voyage_geo.types.analysis import AnalysisResult
 from voyage_geo.types.brand import BrandProfile
 from voyage_geo.types.leaderboard import LeaderboardEntry, LeaderboardResult
@@ -96,6 +98,35 @@ class LeaderboardEngine:
         short = uuid.uuid4().hex[:6]
         return f"lb-{ts}-{short}"
 
+    def _build_metadata_payload(
+        self,
+        run_id: str,
+        started_at: str,
+        *,
+        status: str,
+        completed_at: str | None = None,
+        brands: list[str] | None = None,
+    ) -> dict[str, Any]:
+        enabled_providers = [n for n, p in self.config.providers.items() if p.enabled and p.api_key]
+        payload: dict[str, Any] = {
+            "schema_version": SCHEMA_VERSION,
+            "run_id": run_id,
+            "type": "leaderboard",
+            "status": status,
+            "started_at": started_at,
+            "completed_at": completed_at,
+            "category": self.category,
+            "providers": enabled_providers,
+            "query_count": self.config.queries.count,
+            "iterations": self.config.execution.iterations,
+            "config_hash": build_config_hash(self.config),
+            "resume_from_run_id": self.resume_run_id,
+            "parent_run_id": self.resume_run_id,
+        }
+        if brands is not None:
+            payload["brands"] = brands
+        return payload
+
     def _parse_json_response(self, text: str) -> dict:
         """Extract and parse a JSON object from an LLM response."""
         text = text.strip()
@@ -147,13 +178,14 @@ JSON object:"""
             started_at = datetime.now(UTC).isoformat()
 
         await self.storage.create_run_dir(run_id)
-        await self.storage.save_metadata(run_id, {
-            "run_id": run_id,
-            "type": "leaderboard",
-            "category": self.category,
-            "started_at": started_at,
-            "status": "running",
-        })
+        await self.storage.save_metadata(
+            run_id,
+            self._build_metadata_payload(
+                run_id,
+                started_at,
+                status="running",
+            ),
+        )
 
         try:
             result = await self._execute(run_id, started_at)
@@ -162,26 +194,28 @@ JSON object:"""
             if self.stop_after:
                 final_status = f"stopped-after-{self.stop_after}"
 
-            await self.storage.save_metadata(run_id, {
-                "run_id": run_id,
-                "type": "leaderboard",
-                "category": self.category,
-                "brands": result.brands,
-                "started_at": started_at,
-                "completed_at": datetime.now(UTC).isoformat(),
-                "status": final_status,
-            })
+            await self.storage.save_metadata(
+                run_id,
+                self._build_metadata_payload(
+                    run_id,
+                    started_at,
+                    status=final_status,
+                    completed_at=datetime.now(UTC).isoformat(),
+                    brands=result.brands,
+                ),
+            )
 
             return result
         except Exception:
-            await self.storage.save_metadata(run_id, {
-                "run_id": run_id,
-                "type": "leaderboard",
-                "category": self.category,
-                "started_at": started_at,
-                "completed_at": datetime.now(UTC).isoformat(),
-                "status": "failed",
-            })
+            await self.storage.save_metadata(
+                run_id,
+                self._build_metadata_payload(
+                    run_id,
+                    started_at,
+                    status="failed",
+                    completed_at=datetime.now(UTC).isoformat(),
+                ),
+            )
             raise
 
     async def _analyze_single_brand(

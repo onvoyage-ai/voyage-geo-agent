@@ -3,7 +3,8 @@
 from voyage_geo.types.analysis import AnalysisResult, SentimentScore
 from voyage_geo.types.brand import BrandProfile
 from voyage_geo.types.query import GeneratedQuery
-from voyage_geo.types.result import QueryResult
+from voyage_geo.types.result import ExecutionRun, QueryResult
+from voyage_geo.storage.schema import SCHEMA_VERSION
 
 
 def test_brand_profile():
@@ -34,6 +35,16 @@ def test_query_result():
     assert r.iteration == 1
 
 
+def test_execution_run_schema_version():
+    run = ExecutionRun(
+        run_id="run-1",
+        brand="Notion",
+        providers=["openai"],
+        total_queries=1,
+    )
+    assert run.schema_version == SCHEMA_VERSION
+
+
 def test_sentiment_score_defaults():
     s = SentimentScore()
     assert s.overall == 0.0
@@ -44,6 +55,8 @@ def test_sentiment_score_defaults():
 
 def test_analysis_result():
     a = AnalysisResult(run_id="test-run", brand="Notion")
+    assert a.schema_version == SCHEMA_VERSION
+    assert a.summary.schema_version == SCHEMA_VERSION
     assert a.mindshare.overall == 0.0
     assert a.sentiment.label == "neutral"
     assert a.rank_position.weighted_visibility == 0.0
