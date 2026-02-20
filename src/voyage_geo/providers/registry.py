@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 def create_provider(name: str, config: ProviderConfig) -> BaseProvider:
     """Create a provider instance from a name and config without registering it."""
     from voyage_geo.providers.anthropic_provider import AnthropicProvider
+    from voyage_geo.providers.blockrun_provider import BlockRunProvider
     from voyage_geo.providers.google_provider import GoogleProvider
     from voyage_geo.providers.openai_provider import OpenAIProvider
     from voyage_geo.providers.openrouter_provider import OpenRouterProvider
@@ -24,6 +25,14 @@ def create_provider(name: str, config: ProviderConfig) -> BaseProvider:
         "anthropic": AnthropicProvider,
         "google": GoogleProvider,
         "perplexity": PerplexityProvider,
+        "blockrun": BlockRunProvider,
+        "blockrun-gpt5": BlockRunProvider,
+        "blockrun-gpt4o": BlockRunProvider,
+        "blockrun-claude": BlockRunProvider,
+        "blockrun-gemini": BlockRunProvider,
+        "blockrun-grok": BlockRunProvider,
+        "blockrun-deepseek": BlockRunProvider,
+        "blockrun-llama": BlockRunProvider,
         "openrouter": OpenRouterProvider,
         "chatgpt": OpenRouterProvider,
         "gemini": OpenRouterProvider,

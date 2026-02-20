@@ -199,6 +199,32 @@ All models are accessible through a single [OpenRouter](https://openrouter.ai) A
 
 You can also use direct API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.) for individual providers.
 
+### Alternative: BlockRun (Pay-per-Request)
+
+[BlockRun](https://blockrun.ai) is a unified AI gateway supporting 30+ models with USDC micropayments on Base chain — no API keys or account creation required.
+
+| CLI Name | Model | Provider |
+|----------|-------|----------|
+| `blockrun` | GPT-4o (default) | OpenAI |
+| `blockrun-gpt5` | GPT-5.2 | OpenAI |
+| `blockrun-gpt4o` | GPT-4o | OpenAI |
+| `blockrun-claude` | Claude Sonnet 4 | Anthropic |
+| `blockrun-gemini` | Gemini 2.5 Flash | Google |
+| `blockrun-grok` | Grok 3 | xAI |
+| `blockrun-deepseek` | DeepSeek Chat | DeepSeek |
+| `blockrun-llama` | Llama 4 Maverick | Meta |
+
+Set `BLOCKRUN_WALLET_KEY` to your Base wallet private key and fund with USDC. Usage:
+
+```bash
+# Single model
+python3 -m voyage_geo run -b "YourBrand" -w "https://yourbrand.com" -p blockrun-gpt5 --no-interactive
+
+# Multiple models (same wallet key)
+python3 -m voyage_geo run -b "YourBrand" -w "https://yourbrand.com" \
+  -p blockrun-gpt5,blockrun-claude,blockrun-gemini,blockrun-grok --no-interactive
+```
+
 ## Environment Variables
 
 ```bash
@@ -210,6 +236,9 @@ OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AI...
 PERPLEXITY_API_KEY=pplx-...
+
+# BlockRun (pay-per-request with crypto)
+BLOCKRUN_WALLET_KEY=0x...
 
 # Optional
 LOG_LEVEL=info
