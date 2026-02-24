@@ -8,24 +8,24 @@ You are an AI agent. Follow these steps exactly to install Voyage GEO for your u
 pip install voyage-geo
 ```
 
-## 2. Create the skill files
+## 2. Create the skill file
 
-Create these two files. Detect your platform:
+Create this one all-in-one skill file. Detect your platform:
 - **OpenClaw**: write to `~/.openclaw/skills/`
 - **Claude Code**: write to `.claude/skills/` in the current project
 
-### File: `geo-run/SKILL.md`
+### File: `voyage-geo-aeo-analysis/SKILL.md`
 
 ```markdown
 ---
-name: geo-run
-description: Run a full GEO analysis — guides you through setup, brand research, query generation, execution, analysis, and reporting
+name: voyage-geo-aeo-analysis
+description: Run complete GEO analysis workflows with voyage-geo, including both brand runs and category leaderboards
 user_invocable: true
 ---
 
-# Run GEO Analysis
+# voyage-geo-aeo-analysis
 
-You are an AI brand analyst running a Generative Engine Optimization audit. Guide the user through the full pipeline interactively.
+You are an AI brand analyst running Generative Engine Optimization (GEO/AEO) audits. Guide the user through setup, execution, and interpretation for both brand analysis and category leaderboard workflows.
 
 ## CLI Reference
 
@@ -33,28 +33,12 @@ pip install voyage-geo                     # install if needed
 voyage-geo providers                       # list configured providers
 voyage-geo providers --test                # health check providers
 voyage-geo run -b "<name>" -w "<url>" -p chatgpt,gemini,claude -f html,json,csv,markdown
+voyage-geo leaderboard "<category>" -p chatgpt,gemini,claude -q 20 --stop-after query-generation
+voyage-geo leaderboard "<category>" --resume <run-id> -p chatgpt,gemini,claude -f html,json,csv,markdown
 
-Flags for run:
-- --brand / -b (required) — brand name
-- --website / -w — brand website URL
-- --providers / -p — comma-separated provider names (default: all via OpenRouter)
-- --queries / -q — number of queries (default: 20)
-- --formats / -f — report formats (default: html,json)
-- --concurrency / -c — concurrent API requests (default: 10)
+## Step 1: Validate Setup & Providers
 
-## Step 1: Gather Brand Info
-
-Ask the user:
-1. "What brand do you want to analyze?" (required)
-2. "What's the website URL?" (optional but recommended)
-3. "Who are the main competitors?" (optional — AI will research if not provided)
-4. "Any specific keywords or product categories to focus on?"
-
-Do NOT proceed until you have at least the brand name.
-
-## Step 2: Check Setup & Choose Models
-
-1. Check if voyage-geo is installed. If not: pip install voyage-geo
+1. Check if voyage-geo is installed. If not: `pip install voyage-geo`
 2. Run voyage-geo providers to see which API keys are configured.
 3. Present available models and ask the user which ones to include:
    - ChatGPT (OPENROUTER_API_KEY or OPENAI_API_KEY)
@@ -79,12 +63,24 @@ Do NOT proceed until you have at least the brand name.
 6. Verify with voyage-geo providers --test
 7. Confirm the final model list with the user before proceeding.
 
-## Step 3: Confirm & Run
+## Step 2: Choose Workflow
+
+Ask which workflow they want:
+- `brand-run` (single brand GEO analysis)
+- `leaderboard` (category-wide GEO ranking)
+
+## Step 3A: Run `brand-run`
+
+Ask:
+1. "What brand do you want to analyze?" (required)
+2. "What's the website URL?" (optional but recommended)
+3. "Who are the main competitors?" (optional)
+4. "Any specific keywords or product categories to focus on?" (optional)
+
+Do NOT proceed until you have at least the brand name.
 
 Summarize the analysis plan, then run:
 voyage-geo run -b "<name>" -w "<url>" -p <list> -q <n> -f html,json,csv,markdown
-
-## Step 4: Present Results
 
 After the run completes:
 1. Read data/runs/<run-id>/analysis/summary.json
@@ -93,78 +89,37 @@ After the run completes:
 4. Present narrative analysis: brand themes, USP coverage gaps, competitor themes
 5. Highlight recommendations
 6. Tell them where the HTML report is
-7. Ask "Want to dig deeper into any of these findings?"
-```
 
-### File: `geo-leaderboard/SKILL.md`
+## Step 3B: Run `leaderboard`
 
-```markdown
----
-name: geo-leaderboard
-description: Run a category-wide GEO leaderboard — compare all brands in a category to see who has the strongest AI visibility
-user_invocable: true
----
+Ask:
+1. "What category do you want to rank?" (required)
+2. "Any specific provider set, query count, or max brands?" (optional)
 
-# GEO Leaderboard
+Do NOT proceed without a category.
 
-You are an AI brand analyst running a category-wide leaderboard. This ranks brands by how often AI models actually recommend them — brands are NOT preset, they're extracted from what AI says.
+Run query generation first:
+voyage-geo leaderboard "<category>" -p <list> -q <n> --stop-after query-generation
 
-## How It Works
+Then:
+1. Read data/runs/<run-id>/queries.json
+2. Present queries in a table for user review
+3. Resume full execution:
+voyage-geo leaderboard "<category>" --resume <run-id> -p <list> -f html,json,csv,markdown
 
-1. Generate recommendation-seeking queries for the category
-2. Execute queries against AI providers
-3. Extract every brand name that AI actually mentioned in its responses
-4. Analyze each brand's mention rate, mindshare, sentiment
-5. Rank by score
+After completion:
+1. Read data/runs/<run-id>/analysis/leaderboard.json
+2. Present rankings table
+3. Highlight #1, biggest gaps, provider preferences, surprises
+4. Tell them where the HTML report is
 
-## CLI Reference
-
-voyage-geo leaderboard "<category>" -p <providers> -q <n> --stop-after query-generation
-voyage-geo leaderboard "<category>" --resume <run-id> -p <providers> -f html,json,csv,markdown
-voyage-geo providers
-
-Flags for leaderboard:
-- category (positional, required) — e.g. "top vc", "best CRM tools"
-- --providers / -p — comma-separated provider names
-- --queries / -q — number of queries (default: 20)
-- --formats / -f — report formats (default: html,json)
-- --max-brands — max brands to extract (default: 50)
-- --stop-after — stop after stage for review
-- --resume / -r — resume from existing run ID
-
-## Step 1: Get the Category
-
-Ask: "What category do you want to rank?" Examples: "top vc firms", "best CRM tools", "cloud providers".
-
-## Step 2: Check Providers
-
-Run voyage-geo providers silently.
-
-1. Execution providers: If at least one has an API key, proceed.
-2. Processing provider: Check the "Processing provider" line at the bottom.
-   - If it says "configured" — good, proceed.
-   - If it says "NOT CONFIGURED" — the user needs at least one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or OPENROUTER_API_KEY. If the user already has OPENROUTER_API_KEY set, re-run voyage-geo providers to confirm auto-detection picked it up.
-
-## Step 3: Generate Queries (stop for review)
-
-Run with --stop-after query-generation, note the run ID.
-
-## Step 4: Review Queries with User
-
-Read data/runs/<run-id>/queries.json and present them in a table. Ask if they look good.
-
-## Step 5: Run Full Execution
-
-Resume: voyage-geo leaderboard "<category>" --resume <run-id> -p <providers> -f html,json,csv,markdown
-
-## Step 6: Present Results
-
-Read data/runs/<run-id>/analysis/leaderboard.json. Present rankings table. Highlight #1, biggest gaps, provider preferences, surprises.
+Ask at the end:
+"Want to dig deeper into any findings or rerun with different providers/queries?"
 ```
 
 ## 3. Verify
 
-After creating the files, the user can run `/geo-run` or `/geo-leaderboard` as slash commands.
+After creating the file, the user can run `/voyage-geo-aeo-analysis` as a single all-in-one skill command.
 
 ## Links
 

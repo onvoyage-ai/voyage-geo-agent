@@ -80,7 +80,7 @@ python3 -m voyage_geo run -b "YourBrand" -w "https://yourbrand.com" \
 
 ## Using with AI Agents
 
-Voyage GEO ships interactive skills that work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenClaw](https://openclaw.ai), and any agent that supports the `SKILL.md` format.
+Voyage GEO ships an interactive skill that works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenClaw](https://openclaw.ai), and any agent that supports the `SKILL.md` format.
 
 ### Install Skills
 
@@ -96,7 +96,7 @@ If needed, fallback to GitHub-hosted instructions:
 curl -s https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/AGENTS.md
 ```
 
-### Install Local Agent Commands
+### Install Local Agent Command
 
 Tell your agent to fetch and follow the install instructions:
 
@@ -104,15 +104,13 @@ Tell your agent to fetch and follow the install instructions:
 https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/AGENTS.md
 ```
 
-The agent will `pip install voyage-geo` and create the skill files automatically. Works with Claude Code, OpenClaw, and any agent that supports `SKILL.md`.
+The agent will `pip install voyage-geo` and create the skill automatically. Works with Claude Code, OpenClaw, and any agent that supports `SKILL.md`.
 
 ### Available Skills
 
 | Command | Description |
 |---------|-------------|
-| `voyage-geo-aeo-analysis` | Full AEO/GEO workflow skill installable via remote `SKILL.md` |
-| `/geo-run` | Full GEO analysis — setup, brand research, query generation, execution, analysis, and reporting |
-| `/geo-leaderboard` | Category-wide brand comparison — ranks all brands by AI visibility |
+| `/voyage-geo-aeo-analysis` | Single all-in-one skill that handles both brand GEO runs and category leaderboard workflows |
 
 ## App Mode (Optional GUI)
 
