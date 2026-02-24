@@ -84,16 +84,16 @@ Voyage GEO ships interactive skills that work with [Claude Code](https://docs.an
 
 ### Install Skills
 
-Install from the Skills registry:
+For this package, use this skill entrypoint:
 
 ```bash
-npx skills add onvoyage-ai/voyage-geo-agent@voyage-geo-aeo-analysis
+curl -s https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/voyage-geo-aeo-analysis/SKILL.md
 ```
 
-If the registry page has not indexed yet, install directly from raw GitHub:
+If needed, fallback to GitHub-hosted instructions:
 
 ```bash
-npx skills add https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/voyage-geo-aeo-analysis/SKILL.md
+curl -s https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/AGENTS.md
 ```
 
 ### Install Local Agent Commands
@@ -110,7 +110,7 @@ The agent will `pip install voyage-geo` and create the skill files automatically
 
 | Command | Description |
 |---------|-------------|
-| `voyage-geo-aeo-analysis` | Full AEO/GEO workflow skill installable via `npx skills add` |
+| `voyage-geo-aeo-analysis` | Full AEO/GEO workflow skill installable via remote `SKILL.md` |
 | `/geo-run` | Full GEO analysis — setup, brand research, query generation, execution, analysis, and reporting |
 | `/geo-leaderboard` | Category-wide brand comparison — ranks all brands by AI visibility |
 
