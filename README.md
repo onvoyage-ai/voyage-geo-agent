@@ -80,9 +80,23 @@ python3 -m voyage_geo run -b "YourBrand" -w "https://yourbrand.com" \
 
 ## Using with AI Agents
 
-Voyage GEO ships 8 interactive skills that work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenClaw](https://openclaw.ai), and any agent that supports the `SKILL.md` format.
+Voyage GEO ships interactive skills that work with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [OpenClaw](https://openclaw.ai), and any agent that supports the `SKILL.md` format.
 
 ### Install Skills
+
+Install from the Skills registry:
+
+```bash
+npx skills add onvoyage-ai/voyage-geo-agent@voyage-geo-aeo-analysis
+```
+
+If the registry page has not indexed yet, install directly from raw GitHub:
+
+```bash
+npx skills add https://raw.githubusercontent.com/onvoyage-ai/voyage-geo-agent/main/voyage-geo-aeo-analysis/SKILL.md
+```
+
+### Install Local Agent Commands
 
 Tell your agent to fetch and follow the install instructions:
 
@@ -96,6 +110,7 @@ The agent will `pip install voyage-geo` and create the skill files automatically
 
 | Command | Description |
 |---------|-------------|
+| `voyage-geo-aeo-analysis` | Full AEO/GEO workflow skill installable via `npx skills add` |
 | `/geo-run` | Full GEO analysis — setup, brand research, query generation, execution, analysis, and reporting |
 | `/geo-leaderboard` | Category-wide brand comparison — ranks all brands by AI visibility |
 
